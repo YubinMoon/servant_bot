@@ -275,6 +275,10 @@ class DiscordBot(commands.Bot):
                 color=0xE02B2B,
             )
             await context.send(embed=embed)
+        elif isinstance(error, commands.errors.CommandNotFound):
+            self.logger.warning(
+                f"{context.author} (ID: {context.author.id}) tried to execute the invalid command '{context.invoked_with}'"
+            )
         else:
             raise error
 
