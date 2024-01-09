@@ -174,6 +174,11 @@ class DiscordBot(commands.Bot):
         await self.load_cogs()
         self.status_task.start()
 
+    async def on_ready(self) -> None:
+        self.logger.info("Sync starting...")
+        await self.tree.sync()
+        self.logger.info("Sync complete")
+
     async def on_message(self, message: discord.Message) -> None:
         """
         The code in this event is executed every time someone sends a message, with or without the prefix
