@@ -153,15 +153,24 @@ class Team(commands.Cog, name="team"):
 
     @rank.command(name="start", description="start rank team.")
     async def rank_start(self, context: Context) -> None:
-        await self.handler.start_team(context)
+        try:
+            await self.handler.start_team(context)
+        except commands.CommandError as e:
+            self.bot.logger.warning(e)
 
     @rank.command(name="join", description="join rank team.")
     async def rank_join(self, context: Context) -> None:
-        await self.handler.join_team(context)
+        try:
+            await self.handler.join_team(context)
+        except commands.CommandError as e:
+            self.bot.logger.warning(e)
 
     @rank.command(name="shuffle", description="generate new rank team.")
     async def rank_base(self, context: Context) -> None:
-        await self.handler.shuffle_team(context)
+        try:
+            await self.handler.shuffle_team(context)
+        except commands.CommandError as e:
+            self.bot.logger.warning(e)
 
 
 async def setup(bot) -> None:
