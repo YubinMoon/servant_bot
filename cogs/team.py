@@ -158,6 +158,12 @@ class Team(commands.Cog, name="team"):
         except commands.CommandError as e:
             self.bot.logger.warning(e)
 
+    @commands.hybrid_command(
+        name="q", description="alias of /rank start", aliases=["ㅋ", "큐"]
+    )
+    async def alias_rank_start(self, context: Context) -> None:
+        await self.rank_start(context)
+
     @rank.command(name="join", description="join rank team.")
     async def rank_join(self, context: Context) -> None:
         try:
@@ -165,12 +171,26 @@ class Team(commands.Cog, name="team"):
         except commands.CommandError as e:
             self.bot.logger.warning(e)
 
+    @commands.hybrid_command(
+        name="j", description="alias of /rank join", aliases=["ㅊ", "참", "참여", "참가"]
+    )
+    async def alias_rank_join(self, context: Context) -> None:
+        await self.rank_join(context)
+
     @rank.command(name="shuffle", description="generate new rank team.")
-    async def rank_base(self, context: Context) -> None:
+    async def rank_shuffle(self, context: Context) -> None:
         try:
             await self.handler.shuffle_team(context)
         except commands.CommandError as e:
             self.bot.logger.warning(e)
+
+    @commands.hybrid_command(
+        name="s",
+        description="alias of /rank shuffle",
+        aliases=["ㅅ", "셔", "셔플", "r", "random"],
+    )
+    async def alias_rank_shuffle(self, context: Context) -> None:
+        await self.rank_shuffle(context)
 
 
 async def setup(bot) -> None:
