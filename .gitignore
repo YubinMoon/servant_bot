@@ -143,5 +143,9 @@ cython_debug/
 # SQLITE database
 *.db
 
+# REDIS database
+dump.rdb
+appendonlydir/
+
 # Log file
 discord.log
