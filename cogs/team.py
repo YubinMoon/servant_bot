@@ -15,13 +15,14 @@ class TeamHandler:
         self.teams: dict[int, list[discord.Member]] = {}
         self.weights: dict[int, list[list[int]]] = {}
 
-    async def start_team(self, context: Context) -> None:
+    async def start(self, context: Context) -> None:
         embed = discord.Embed(
             title="새로운 팀이 생성되었습니다.",
-            description="**/rank join** 명령어를 통해 등록해 주세요",
+            description="**/j** 명령어를 통해 등록해 주세요",
             color=0xBEBEFE,
         )
         embed.add_field(name="0/5", value="")
+        embed.set_footer(text="/s로 팀을 구성합니다. /c로 팀 등록을 취소합니다.")
         message = await context.send(embed=embed)
 
         channel_id = message.channel.id
@@ -29,9 +30,9 @@ class TeamHandler:
         self.teams[channel_id] = []
         self.weights[channel_id] = self.base_weight.copy()
 
-        await self.join_team(context)
+        await self.join(context)
 
-    async def join_team(self, context: Context) -> None:
+    async def join(self, context: Context) -> None:
         channel_id = context.channel.id
         member = context.author
 
@@ -39,7 +40,7 @@ class TeamHandler:
             await self.no_team_error(context)
         if member in self.teams[channel_id]:
             await self.already_in_team_error(context)
-        if len(self.teams[channel_id]) >= 5:
+        if len(self.teams[channel_id]) >= 10:
             await self.max_team_error(context)
 
         self.teams[channel_id].append(member)
@@ -52,25 +53,49 @@ class TeamHandler:
             )
             await context.send(embed=embed)
 
+    async def cancel_join(self, context: Context) -> None:
+        channel_id = context.channel.id
+        member = context.author
+
+        if channel_id not in self.teams:
+            await self.no_team_error(context)
+        elif member not in self.teams[channel_id]:
+            await self.already_not_in_team_error(context)
+
+        self.teams[channel_id].remove(member)
+        await self.update_message(channel_id)
+
+        embed = discord.Embed(
+            description=f"{member.mention}님이 팀 등록을 취소했습니다.",
+            color=0xBEBEFE,
+        )
+        await context.send(embed=embed)
+
     async def update_message(self, channel_id: int) -> None:
-        if channel_id not in self.messages:
-            return
         message = self.messages[channel_id]
         embed = message.embeds[0]
         embed.set_field_at(
             index=0,
-            name=f"{len(self.teams[channel_id])}/5",
+            name=f"{len(self.teams[channel_id])}/{5 if len(self.teams[channel_id]) <= 5 else 10}",
             value=" - ".join([member.mention for member in self.teams[channel_id]]),
         )
         await message.edit(embed=embed)
 
-    async def shuffle_team(self, context: Context) -> None:
+    async def shuffle(self, context: Context) -> None:
         channel_id = context.channel.id
 
         if channel_id not in self.teams:
             await self.no_team_error(context)
-        if len(self.teams[channel_id]) != 5:
+        if len(self.teams[channel_id]) not in [5, 10]:
             await self.team_member_num_error(context)
+
+        if len(self.teams[channel_id]) == 5:
+            await self.shuffle_rank(context)
+        elif len(self.teams[channel_id]) == 10:
+            await self.shuffle_custom(context)
+
+    async def shuffle_rank(self, context: Context) -> None:
+        channel_id = context.channel.id
 
         team = self.get_rank_team(channel_id)
         self.adjustment_weight(channel_id, team)
@@ -82,6 +107,23 @@ class TeamHandler:
             member_no = team.index(i)
             member = self.teams[channel_id][member_no]
             embed.add_field(name=lane, value=member.mention)
+        await context.send(embed=embed)
+
+    async def shuffle_custom(self, context: Context) -> None:
+        channeL_id = context.channel.id
+
+        members = self.teams[channeL_id].copy()
+        random.shuffle(members)
+        embed = discord.Embed(
+            description="새로운 팀을 구성했습니다.",
+            color=0xBEBEFE,
+        )
+        embed.add_field(
+            name="1팀", value="\n".join([member.mention for member in members[:5]])
+        )
+        embed.add_field(
+            name="2팀", value="\n".join([member.mention for member in members[5:]])
+        )
         await context.send(embed=embed)
 
     def get_rank_team(self, channel_id: int) -> list[int]:
@@ -108,7 +150,7 @@ class TeamHandler:
     async def no_team_error(self, context: Context) -> None:
         embed = discord.Embed(
             title="팀이 생성되지 않았습니다.",
-            description="**/rank start** 팀을 생성해 주세요.",
+            description="**/q** 팀을 생성해 주세요.",
             color=0xE02B2B,
         )
         await context.send(embed=embed, ephemeral=True)
@@ -122,6 +164,14 @@ class TeamHandler:
         await context.send(embed=embed, ephemeral=True)
         raise commands.CommandError("already in rank team")
 
+    async def already_not_in_team_error(self, context: Context) -> None:
+        embed = discord.Embed(
+            description="팀에 등록되어 있지 않습니다.",
+            color=0xE02B2B,
+        )
+        await context.send(embed=embed, ephemeral=True)
+        raise commands.CommandError("already not in rank team")
+
     async def max_team_error(self, context: Context) -> None:
         embed = discord.Embed(
             description="팀이 꽉 찼습니다.",
@@ -132,7 +182,7 @@ class TeamHandler:
 
     async def team_member_num_error(self, context: Context) -> None:
         embed = discord.Embed(
-            description="인원이 맞지 않습니다.",
+            description="인원이 맞지 않습니다.\n\n5명 또는 10명이어야 합니다.",
             color=0xE02B2B,
         )
         await context.send(embed=embed, ephemeral=True)
@@ -144,53 +194,65 @@ class Team(commands.Cog, name="team"):
         self.bot = bot
         self.handler = TeamHandler(bot)
 
-    @commands.hybrid_group(
-        name="rank",
-        description="get rank lane at voice channel.",
-    )
-    async def rank(self, context: Context) -> None:
+    @commands.hybrid_group(name="team")
+    async def team(self, context: Context) -> None:
         pass
 
-    @rank.command(name="start", description="start rank team.")
-    async def rank_start(self, context: Context) -> None:
+    @team.command(name="start", description="새로운 팀 생성 (기존 팀 제거)")
+    async def start(self, context: Context) -> None:
         try:
-            await self.handler.start_team(context)
+            await self.handler.start(context)
         except commands.CommandError as e:
             self.bot.logger.warning(e)
 
     @commands.hybrid_command(
-        name="q", description="alias of /rank start", aliases=["ㅋ", "큐"]
+        name="q", description="alias of /lol start", aliases=["ㅋ", "큐"]
     )
-    async def alias_rank_start(self, context: Context) -> None:
-        await self.rank_start(context)
+    async def alias_start(self, context: Context) -> None:
+        await self.start(context)
 
-    @rank.command(name="join", description="join rank team.")
-    async def rank_join(self, context: Context) -> None:
+    @team.command(name="join", description="생성된 팀에 참가")
+    async def join(self, context: Context) -> None:
         try:
-            await self.handler.join_team(context)
+            await self.handler.join(context)
         except commands.CommandError as e:
             self.bot.logger.warning(e)
 
     @commands.hybrid_command(
-        name="j", description="alias of /rank join", aliases=["ㅊ", "참", "참여", "참가"]
+        name="j", description="alias of /lol join", aliases=["ㅊ", "참", "참여", "참가"]
     )
-    async def alias_rank_join(self, context: Context) -> None:
-        await self.rank_join(context)
+    async def alias_join(self, context: Context) -> None:
+        await self.join(context)
 
-    @rank.command(name="shuffle", description="generate new rank team.")
-    async def rank_shuffle(self, context: Context) -> None:
+    @team.command(name="cancel", description="팀 참가 취소")
+    async def cancel_join(self, context: Context) -> None:
         try:
-            await self.handler.shuffle_team(context)
+            await self.handler.cancel_join(context)
+        except commands.CommandError as e:
+            self.bot.logger.warning(e)
+
+    @commands.hybrid_command(
+        name="c",
+        description="alias of /lol cancel",
+        aliases=["ㅊㅅ", "취", "취소"],
+    )
+    async def alias_cencel_join(self, context: Context) -> None:
+        await self.cancel_join(context)
+
+    @team.command(name="shuffle", description="랜덤 팀 생성")
+    async def shuffle(self, context: Context) -> None:
+        try:
+            await self.handler.shuffle(context)
         except commands.CommandError as e:
             self.bot.logger.warning(e)
 
     @commands.hybrid_command(
         name="s",
-        description="alias of /rank shuffle",
+        description="alias of /lol shuffle",
         aliases=["ㅅ", "셔", "셔플", "r", "random"],
     )
-    async def alias_rank_shuffle(self, context: Context) -> None:
-        await self.rank_shuffle(context)
+    async def alias_shuffle(self, context: Context) -> None:
+        await self.shuffle(context)
 
 
 async def setup(bot) -> None:
