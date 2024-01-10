@@ -6,9 +6,11 @@ import random
 import sys
 
 import discord
+import redis
 from discord.ext import commands, tasks
 from discord.ext.commands import Context
 from dotenv import load_dotenv
+from database import DatabaseManager
 
 if not os.path.isfile(f"{os.path.realpath(os.path.dirname(__file__))}/config.json"):
     sys.exit("'config.json' not found! Please add it and try again.")
@@ -128,6 +130,11 @@ class DiscordBot(commands.Bot):
         """
         self.logger = logger
         self.config = config
+        self.database: DatabaseManager = None
+
+    async def load_db(self) -> None:
+        r = redis.Redis(host=os.getenv("REDIS_HOST"), port=6379, decode_responses=True)
+        self.database = DatabaseManager(r=r, logger=self.logger)
 
     async def load_cogs(self) -> None:
         """
@@ -171,6 +178,7 @@ class DiscordBot(commands.Bot):
             f"Running on: {platform.system()} {platform.release()} ({os.name})"
         )
         self.logger.info("-------------------")
+        await self.load_db()
         await self.load_cogs()
         self.status_task.start()
 
