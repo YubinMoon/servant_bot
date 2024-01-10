@@ -4,3 +4,15 @@ services:
   gpt-bot:
     build: .
     restart: always
+    depends_on:
+      - redis
+
+  redis:
+    image: redis/redis-stack:latest
+    restart: always
+    ports:
+      - "6379:6379"
+      - "${REDIS_WEB_PORT}:8001"
+    volumes:
+      - "./database:/data"
+      - "./database/redis.conf:/redis-stack.conf"
