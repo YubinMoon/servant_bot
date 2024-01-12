@@ -11,7 +11,7 @@ services:
     image: redis/redis-stack:latest
     restart: always
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT}:6379"
       - "${REDIS_WEB_PORT}:8001"
     volumes:
       - "./database:/data"
