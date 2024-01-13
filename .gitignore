@@ -149,3 +149,6 @@ appendonlydir/
 
 # Log file
 discord.log
+
+# Temporary file
+status.txt
