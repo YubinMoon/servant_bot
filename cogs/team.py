@@ -165,6 +165,22 @@ class TeamHandler:
                     weight[member_no][i] += remain
         self.db.set_weights(channel_id, weight)
 
+    async def info(self, context: Context) -> None:
+        channel_id = context.channel.id
+        if await self.db.get_team(channel_id) is None:
+            await self.no_team_error(context)
+        members = await self.db.get_members(channel_id)
+        embed = discord.Embed(
+            color=0xBEBEFE,
+        )
+        embed.add_field(
+            name="현재 팀원",
+            value="\n".join(
+                [f"{member.mention} ({member.name})" for member in members]
+            ),
+        )
+        await context.send(embed=embed, ephemeral=True)
+
     async def no_team_error(self, context: Context) -> None:
         embed = discord.Embed(
             title="팀이 생성되지 않았습니다.",
@@ -271,6 +287,21 @@ class Team(commands.Cog, name="team"):
     )
     async def alias_shuffle(self, context: Context) -> None:
         await self.shuffle(context)
+
+    @team.command(name="info", description="팀 확인")
+    async def info(self, context: Context) -> None:
+        try:
+            await self.handler.info(context)
+        except commands.CommandError as e:
+            self.bot.logger.warning(e)
+
+    @commands.hybrid_command(
+        name="t",
+        description="alias of /lol info",
+        aliases=["ㅌ", "팀", "팀확인"],
+    )
+    async def alias_info(self, context: Context) -> None:
+        await self.info(context)
 
 
 async def setup(bot) -> None:
