@@ -160,8 +160,16 @@ class DiscordBot(commands.Bot):
         """
         Setup the game status task of the bot.
         """
-        statuses = ["sake 마시기", "미담이의 알바 찾기", "기대"]
+        statuses = self.get_status_list()
         await self.change_presence(activity=discord.Game(random.choice(statuses)))
+
+    def get_status_list(self) -> list[str]:
+        try:
+            with open("status.txt", "r") as f:
+                return f.read().split("\n")
+        except FileNotFoundError:
+            self.logger.warning("Status file not found, using default status")
+            return ["limeskin"]
 
     @status_task.before_loop
     async def before_status_task(self) -> None:
