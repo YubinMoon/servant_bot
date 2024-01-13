@@ -137,6 +137,7 @@ class DiscordBot(commands.Bot):
             port=os.getenv("REDIS_PORT"),
             decode_responses=False,
         )
+        self.database.ping()
 
     async def load_cogs(self) -> None:
         """
