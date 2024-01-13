@@ -10,7 +10,6 @@ import redis
 from discord.ext import commands, tasks
 from discord.ext.commands import Context
 from dotenv import load_dotenv
-from database import DatabaseManager
 
 if not os.path.isfile(f"{os.path.realpath(os.path.dirname(__file__))}/config.json"):
     sys.exit("'config.json' not found! Please add it and try again.")
@@ -60,6 +59,7 @@ It is recommended to use slash commands and therefore not use prefix commands.
 If you want to use prefix commands, make sure to also enable the intent below in the Discord developer portal.
 """
 intents.message_content = True
+intents.members = True
 
 # Setup both of the loggers
 
@@ -130,13 +130,12 @@ class DiscordBot(commands.Bot):
         """
         self.logger = logger
         self.config = config
-        self.database: DatabaseManager = None
 
     async def load_db(self) -> None:
         self.database = redis.Redis(
             host=os.getenv("REDIS_HOST"),
             port=os.getenv("REDIS_PORT"),
-            decode_responses=True,
+            decode_responses=False,
         )
 
     async def load_cogs(self) -> None:
