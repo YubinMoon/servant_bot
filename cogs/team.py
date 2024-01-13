@@ -56,8 +56,8 @@ class TeamHandler:
         if await self.db.get_team(channel_id) is None:
             await self.no_team_error(context)
         members = await self.db.get_members(channel_id)
-        # if member in members:
-        #     await self.already_in_team_error(context)
+        if member in members:
+            await self.already_in_team_error(context)
         if len(members) >= 10:
             await self.max_team_error(context)
 
