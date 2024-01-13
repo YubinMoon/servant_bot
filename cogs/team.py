@@ -1,7 +1,10 @@
+import logging
 import random
+import traceback
 import discord
 from discord.ext import commands
 from discord.ext.commands import Context
+from database import TeamDataManager
 
 
 class TeamHandler:
@@ -9,13 +12,16 @@ class TeamHandler:
 
     def __init__(self, bot) -> None:
         self.bot = bot
-        self.multiple = 0.1
+        self.logger: logging.Logger = bot.logger
         self.base_weight = [[10000 for _ in range(5)] for _ in range(5)]
+        self.db = TeamDataManager(bot)
+        self.multiple = 0.1
         self.messages: dict[int, discord.Message] = {}
         self.teams: dict[int, list[discord.Member]] = {}
         self.weights: dict[int, list[list[int]]] = {}
 
     async def start(self, context: Context) -> None:
+        channel_id = context.channel.id
         embed = discord.Embed(
             title="새로운 팀이 생성되었습니다.",
             description="**/j** 명령어를 통해 등록해 주세요",
@@ -24,45 +30,56 @@ class TeamHandler:
         embed.add_field(name="0/5", value="")
         embed.set_footer(text="/s로 팀을 구성합니다. /c로 팀 등록을 취소합니다.")
         message = await context.send(embed=embed)
+        try:
+            await self.db.start_team(channel_id, message.id)
+            await self.join(context)
+        except Exception as e:
+            self.logger.error(e)
+            embed = discord.Embed(
+                title="팀 생성에 실패했습니다.",
+                description="다시 시도해 주세요.",
+                color=0xE02B2B,
+            )
+            await message.edit(embed=embed)
 
-        channel_id = message.channel.id
-        self.messages[channel_id] = message
-        self.teams[channel_id] = []
-        self.weights[channel_id] = self.base_weight.copy()
-
-        await self.join(context)
+            error_embed = discord.Embed(
+                title="ERROR LOG",
+                description=f"```{traceback.format_exc()}```",
+                color=0xE02B2B,
+            )
+            await context.send(embed=error_embed, ephemeral=True)
+            traceback.print_exc()
 
     async def join(self, context: Context) -> None:
         channel_id = context.channel.id
         member = context.author
-
-        if channel_id not in self.teams:
+        if await self.db.get_team(channel_id) is None:
             await self.no_team_error(context)
-        if member in self.teams[channel_id]:
-            await self.already_in_team_error(context)
-        if len(self.teams[channel_id]) >= 10:
+        members = await self.db.get_members(channel_id)
+        # if member in members:
+        #     await self.already_in_team_error(context)
+        if len(members) >= 10:
             await self.max_team_error(context)
 
-        self.teams[channel_id].append(member)
+        await self.db.add_member(channel_id, member)
         await self.update_message(channel_id)
 
-        if len(self.teams[channel_id]) > 1:
-            embed = discord.Embed(
-                description=f"{member.mention}님이 팀에 등록되었습니다.",
-                color=0xBEBEFE,
-            )
-            await context.send(embed=embed)
+        embed = discord.Embed(
+            description=f"{(await self.db.get_message(channel_id)).jump_url}에 {member.mention}님이 팀에 등록되었습니다.",
+            color=0xBEBEFE,
+        )
+        await context.send(embed=embed)
 
     async def cancel_join(self, context: Context) -> None:
         channel_id = context.channel.id
         member = context.author
-
-        if channel_id not in self.teams:
+        if await self.db.get_team(channel_id) is None:
             await self.no_team_error(context)
-        elif member not in self.teams[channel_id]:
+        members = await self.db.get_members(channel_id)
+        if member not in members:
             await self.already_not_in_team_error(context)
 
-        self.teams[channel_id].remove(member)
+        await self.db.pop_member(channel_id, member)
         await self.update_message(channel_id)
 
         embed = discord.Embed(
@@ -72,31 +89,33 @@ class TeamHandler:
         await context.send(embed=embed)
 
     async def update_message(self, channel_id: int) -> None:
-        message = self.messages[channel_id]
+        message = await self.db.get_message(channel_id)
+        members = await self.db.get_members(channel_id)
         embed = message.embeds[0]
         embed.set_field_at(
             index=0,
-            name=f"{len(self.teams[channel_id])}/{5 if len(self.teams[channel_id]) <= 5 else 10}",
-            value=" - ".join([member.mention for member in self.teams[channel_id]]),
+            name=f"{len(members)}/{5 if len(members) <= 5 else 10}",
+            value=" - ".join([member.mention for member in members]),
         )
         await message.edit(embed=embed)
 
     async def shuffle(self, context: Context) -> None:
         channel_id = context.channel.id
-
-        if channel_id not in self.teams:
+        if await self.db.get_team(channel_id) is None:
             await self.no_team_error(context)
-        if len(self.teams[channel_id]) not in [5, 10]:
-            await self.team_member_num_error(context)
+        members = await self.db.get_members(channel_id)
+        if len(members) not in [5, 10]:
+            await self.max_team_error(context)
 
-        if len(self.teams[channel_id]) == 5:
+        if len(members) == 5:
             await self.shuffle_rank(context)
-        elif len(self.teams[channel_id]) == 10:
+        elif len(members) == 10:
             await self.shuffle_custom(context)
 
     async def shuffle_rank(self, context: Context) -> None:
         channel_id = context.channel.id
 
+        members = await self.db.get_members(channel_id)
         team = self.get_rank_team(channel_id)
         self.adjustment_weight(channel_id, team)
         embed = discord.Embed(
@@ -105,14 +124,14 @@ class TeamHandler:
         )
         for i, lane in enumerate(self.LANE):
             member_no = team.index(i)
-            member = self.teams[channel_id][member_no]
+            member = members[member_no]
             embed.add_field(name=lane, value=member.mention)
         await context.send(embed=embed)
 
     async def shuffle_custom(self, context: Context) -> None:
-        channeL_id = context.channel.id
+        channel_id = context.channel.id
 
-        members = self.teams[channeL_id].copy()
+        members = await self.db.get_members(channel_id)
         random.shuffle(members)
         embed = discord.Embed(
             description="새로운 팀을 구성했습니다.",
@@ -128,16 +147,15 @@ class TeamHandler:
 
     def get_rank_team(self, channel_id: int) -> list[int]:
         team = []
+        weights = self.db.get_weights(channel_id)
         while len(set(team)) != 5:
             team.clear()
             for i in range(5):
-                team.append(
-                    random.choices(range(5), weights=self.weights[channel_id][i])[0]
-                )
+                team.append(random.choices(range(5), weights=weights[i])[0])
         return team
 
     def adjustment_weight(self, channel_id: int, team: list[int]) -> None:
-        weight = self.weights[channel_id].copy()
+        weight = self.db.get_weights(channel_id)
         for member_no, lane_no in enumerate(team):
             remain = (weight[member_no][lane_no] * (1 - self.multiple)) // 4
             for i in range(5):
@@ -145,7 +163,7 @@ class TeamHandler:
                     weight[member_no][i] -= remain * 4
                 else:
                     weight[member_no][i] += remain
-        self.weights[channel_id] = weight
+        self.db.set_weights(channel_id, weight)
 
     async def no_team_error(self, context: Context) -> None:
         embed = discord.Embed(
