@@ -133,12 +133,11 @@ class DiscordBot(commands.Bot):
         self.database: DatabaseManager = None
 
     async def load_db(self) -> None:
-        r = redis.Redis(
+        self.database = redis.Redis(
             host=os.getenv("REDIS_HOST"),
             port=os.getenv("REDIS_PORT"),
             decode_responses=True,
         )
-        self.database = DatabaseManager(r=r, logger=self.logger)
 
     async def load_cogs(self) -> None:
         """
