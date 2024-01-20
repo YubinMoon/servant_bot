@@ -34,41 +34,9 @@ class ChatGPT(commands.Cog, name="chatGPT"):
             return
 
         if message.channel.type == discord.ChannelType.public_thread:
-            handler = ChatHandler(self.bot, self.db)
-            await handler.chat_response(message)
+            handler = ChatHandler(self.bot, self.db, message)
+            await handler.chat_response()
             return
-
-    # async def handle_chat(self, message: discord.Message) -> None:
-    #     time_now = time()
-    #     messages = self.get_messages_from_thread(message.channel)
-    #     completion = await client.chat.completions.create(
-    #         messages=messages,
-    #         model="gpt-4-1106-preview",
-    #         stream=True,
-    #     )
-    #     answer = await message.channel.send("생각중...")
-    #     answer_text = ""
-    #     async for event in completion:
-    #         if event.choices[0].finish_reason == "stop":
-    #             break
-    #         answer_text += event.choices[0].delta.content
-    #         if time() - time_now > 0.8 and answer_text:
-    #             time_now = time()
-    #             await answer.edit(content=answer_text)
-    #     await answer.edit(content=answer_text)
-
-    # async def get_messages_from_thread(self, thread: discord.Thread) -> list[dict]:
-    #     messages = []
-    #     async for msg in thread.history(limit=20, oldest_first=True):
-    #         if msg.type == discord.MessageType.thread_starter_message:
-    #             continue
-    #         messages.append(
-    #             {
-    #                 "role": "assistant" if msg.author.bot else "user",
-    #                 "content": msg.content,
-    #             }
-    #         )
-    #     return messages
 
 
 async def setup(bot) -> None:
