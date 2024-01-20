@@ -11,6 +11,8 @@ from discord.ext import commands, tasks
 from discord.ext.commands import Context
 from dotenv import load_dotenv
 
+load_dotenv()
+
 if not os.path.isfile(f"{os.path.realpath(os.path.dirname(__file__))}/config.json"):
     sys.exit("'config.json' not found! Please add it and try again.")
 else:
@@ -96,7 +98,11 @@ class LoggingFormatter(logging.Formatter):
 
 
 logger = logging.getLogger("discord_bot")
-logger.setLevel(logging.INFO)
+logger.setLevel(
+    {"info": logging.INFO, "debug": logging.DEBUG}.get(
+        os.getenv("LOG_LEVEL"), logging.INFO
+    )
+)
 
 # Console handler
 console_handler = logging.StreamHandler()
@@ -286,8 +292,6 @@ class DiscordBot(commands.Bot):
         else:
             raise error
 
-
-load_dotenv()
 
 bot = DiscordBot()
 bot.run(os.getenv("TOKEN"))
