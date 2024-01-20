@@ -1,42 +1,18 @@
-import os
-import openai
-import logging
-import discord
 import asyncio
+import logging
+import os
 from time import time
-from datetime import datetime
-from discord.ext.commands import Bot, Context
-
-from dotenv import load_dotenv
-from database import ChatDataManager
-from openai.types.chat import ChatCompletionChunk
-from openai.types.chat.chat_completion_chunk import ChoiceDeltaToolCall
 from typing import AsyncGenerator
 
-tools = [
-    {
-        "type": "function",
-        "function": {
-            "name": "get_current_weather",
-            "description": "Get the current weather",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "location": {
-                        "type": "string",
-                        "description": "The city and state, e.g. San Francisco, CA",
-                    },
-                    "format": {
-                        "type": "string",
-                        "enum": ["celsius", "fahrenheit"],
-                        "description": "The temperature unit to use. Infer this from the users location.",
-                    },
-                },
-                "required": ["location", "format"],
-            },
-        },
-    },
-]
+import discord
+import openai
+from discord.ext.commands import Bot
+from openai.types.chat import ChatCompletionChunk
+from openai.types.chat.chat_completion_chunk import ChoiceDeltaToolCall
+
+from database import ChatDataManager
+
+from .function import ToolHandler
 
 
 class ChatResponse(ChatCompletionChunk):
@@ -101,6 +77,8 @@ class ChatHandler:
         self.response_txt = "생각 중..."
         self.channel = message.channel
         self.req_message = message
+        self.tool_handler = ToolHandler(bot, self.channel)
+        print(self.tool_handler.get_tools())
 
     async def chat_response(self):
         self.append_content(self.channel.id, "user", self.req_message.content)
@@ -138,7 +116,7 @@ class ChatHandler:
         completion = await self.client.chat.completions.create(
             messages=messages,
             model="gpt-4-1106-preview",
-            tools=tools,
+            tools=self.tool_handler.get_tools(),
             stream=True,
         )
         async for event in completion:
@@ -186,8 +164,11 @@ class ChatHandler:
 
     async def handle_tool_calls(self, tool_calls: list[ChoiceDeltaToolCall]) -> None:
         for tool_call in tool_calls:
-            if tool_call.function.name == "get_current_weather":
-                self.append_tool_message(self.channel.id, tool_call.id, "맑음")
+            if tool_call.type == "function":
+                function_name = tool_call.function.name
+                function_args = tool_call.function.arguments
+                response = await self.tool_handler.process(function_name, function_args)
+                self.append_tool_message(self.channel.id, tool_call.id, response)
 
     def message_line(self, role: str, content: str) -> dict:
         self.role_check(role)
