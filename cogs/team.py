@@ -138,10 +138,18 @@ class TeamHandler:
             color=0xBEBEFE,
         )
         embed.add_field(
-            name="1팀", value="\n".join([member.mention for member in members[:5]])
+            name="1팀",
+            value="\n".join(
+                [f"{member.mention} ({member.global_name})" for member in members[:5]]
+            ),
+            inline=False,
         )
         embed.add_field(
-            name="2팀", value="\n".join([member.mention for member in members[5:]])
+            name="2팀",
+            value="\n".join(
+                [f"{member.mention} ({member.global_name})" for member in members[5:]]
+            ),
+            inline=False,
         )
         await context.send(embed=embed)
 
