@@ -73,12 +73,11 @@ class ChatHandler:
         self.client = openai.AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         self.db = db
         self.cooldown = 0.5
-        self.old_response_txt = "생각 중..."
         self.response_txt = "생각 중..."
+        self.old_response_txt = self.response_txt
         self.channel = message.channel
         self.req_message = message
         self.tool_handler = ToolHandler(bot, self.channel)
-        print(self.tool_handler.get_tools())
 
     async def chat_response(self):
         self.append_content(self.channel.id, "user", self.req_message.content)
