@@ -125,7 +125,11 @@ class TeamHandler:
         for i, lane in enumerate(self.LANE):
             member_no = team.index(i)
             member = members[member_no]
-            embed.add_field(name=lane, value=member.mention)
+            embed.add_field(
+                name=lane,
+                value=f"{member.mention} ({member.global_name})",
+                inline=False,
+            )
         await context.send(embed=embed)
 
     async def shuffle_custom(self, context: Context) -> None:
