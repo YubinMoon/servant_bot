@@ -18,6 +18,7 @@ jobs:
           port: ${{ secrets.PORT }}
           script: |
             cd ./services/discord_bot/&&
+            git pull origin main&&
             docker compose down;
             docker compose up -d --build&&
             echo finished||
