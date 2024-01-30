@@ -29,7 +29,7 @@ class TeamHandler:
         )
         embed.add_field(name="0/5", value="")
         embed.set_footer(text="/s로 굴릴 수 있어요. /c로 팀 등록을 취소할 수 있어요.")
-        message = await context.send(embed=embed)
+        message = await context.send(embed=embed, silent=True)
         try:
             await self.db.start_team(channel_id, message.id)
             await self.join(context)
@@ -47,7 +47,7 @@ class TeamHandler:
                 description=f"```{traceback.format_exc()}```",
                 color=0xE02B2B,
             )
-            await context.send(embed=error_embed, ephemeral=True)
+            await context.send(embed=error_embed, ephemeral=True, silent=True)
             traceback.print_exc()
 
     async def join(self, context: Context) -> None:
@@ -65,7 +65,7 @@ class TeamHandler:
         await self.update_message(channel_id)
 
         embed = discord.Embed(
-            description=f"{(await self.db.get_message(channel_id)).jump_url}에 {member.mention}님을 등록했어요.",
+            description=f"{member.mention}님이 팀에 참가했어요.",
             color=0xBEBEFE,
         )
         await context.send(embed=embed)
@@ -86,7 +86,7 @@ class TeamHandler:
             description=f"{member.mention}님이 팀 등록을 취소했어요.",
             color=0xBEBEFE,
         )
-        await context.send(embed=embed)
+        await context.send(embed=embed, silent=True)
 
     async def update_message(self, channel_id: int) -> None:
         message = await self.db.get_message(channel_id)
@@ -191,7 +191,7 @@ class TeamHandler:
                 [f"{member.mention} ({member.name})" for member in members]
             ),
         )
-        await context.send(embed=embed, ephemeral=True)
+        await context.send(embed=embed, ephemeral=True, silent=True)
 
     async def no_team_error(self, context: Context) -> None:
         embed = discord.Embed(
@@ -199,7 +199,7 @@ class TeamHandler:
             description="**/q**로 팀을 먼저 생성해 주세요.",
             color=0xE02B2B,
         )
-        await context.send(embed=embed, ephemeral=True)
+        await context.send(embed=embed, ephemeral=True, silent=True)
         raise commands.CommandError("no rank team")
 
     async def already_in_team_error(self, context: Context) -> None:
@@ -207,7 +207,7 @@ class TeamHandler:
             description="이미 팀에 등록되어있어요.",
             color=0xE02B2B,
         )
-        await context.send(embed=embed, ephemeral=True)
+        await context.send(embed=embed, ephemeral=True, silent=True)
         raise commands.CommandError("already in rank team")
 
     async def already_not_in_team_error(self, context: Context) -> None:
@@ -215,7 +215,7 @@ class TeamHandler:
             description="팀에 등록되어 있지 않아요.",
             color=0xE02B2B,
         )
-        await context.send(embed=embed, ephemeral=True)
+        await context.send(embed=embed, ephemeral=True, silent=True)
         raise commands.CommandError("already not in rank team")
 
     async def max_team_error(self, context: Context) -> None:
@@ -223,7 +223,7 @@ class TeamHandler:
             description="팀이 꽉 찼어요.",
             color=0xE02B2B,
         )
-        await context.send(embed=embed, ephemeral=True)
+        await context.send(embed=embed, ephemeral=True, silent=True)
         raise commands.CommandError("max rank team")
 
     async def team_member_num_error(self, context: Context) -> None:
@@ -231,7 +231,7 @@ class TeamHandler:
             description="인원이 맞지 않습니다.\n\n5명 또는 10명이어야 합니다.",
             color=0xE02B2B,
         )
-        await context.send(embed=embed, ephemeral=True)
+        await context.send(embed=embed, ephemeral=True, slient=True)
         raise commands.CommandError("team member num error")
 
 
