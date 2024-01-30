@@ -2,11 +2,23 @@ name: CD
 
 on:
   push:
-    - "main"
+    branches:
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: test
-        run: echo test    
+      - name: rebuild-servant-bot
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          port: ${{ secrets.PORT }}
+          script: |
+            cd ./services/discord_bot/&&
+            docker compose down;
+            docker compose up -d --build&&
+            echo finished||
+            echo error!;
