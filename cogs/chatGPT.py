@@ -1,14 +1,11 @@
 import logging
-import os
 from time import time
 
 import discord
-import openai
-from discord import app_commands
 from discord.ext import commands
 from discord.ext.commands import Context
-from dotenv import load_dotenv
 
+import summarize
 from chat import ChatHandler
 from database import ChatDataManager
 
@@ -27,6 +24,34 @@ class ChatGPT(commands.Cog, name="chatGPT"):
         )
         self.db.set_thread(thread.id)
         self.logger.info(f"new chat thread created by {context.author.name}")
+
+    @commands.hybrid_command(name="summarize", description="summarize the chat.")
+    async def summarize(self, context: Context, *, time: int = 24) -> None:
+        channel = context.channel
+
+        if not summarize.check_time(time):
+            await context.send(
+                f"{summarize.MAX_DAYS}일 이내로 설정해주세요.", ephemeral=True
+            )
+            return
+
+        if not summarize.check_channel(channel):
+            await context.send(
+                "이 명령어는 텍스트 채널에서만 사용할 수 있어요.", ephemeral=True
+            )
+            return
+
+        messages = await summarize.get_channel_messages(channel, time)
+        if not messages:
+            await context.send(
+                f"이전 {time}시간 동안에 메시지가 없어요.", ephemeral=True
+            )
+            return
+
+        new_msg = await context.send("채팅 내용을 요약할게요...", ephemeral=True)
+        result = await summarize.get_summary(messages)
+        await new_msg.edit(content=result)
+        return
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
