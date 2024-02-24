@@ -35,6 +35,10 @@ class LoggingFormatter(logging.Formatter):
 
 def get_logger(name: str) -> logging.Logger:
     logger = logging.getLogger(name)
+
+    if logger.hasHandlers():
+        return logger
+
     logger.setLevel(
         {"info": logging.INFO, "debug": logging.DEBUG}.get(
             os.getenv("LOG_LEVEL"), logging.INFO
