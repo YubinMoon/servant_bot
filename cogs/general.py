@@ -7,6 +7,7 @@ from discord.ext.commands import Context
 
 from bot import ServantBot
 from utils.logger import get_logger
+from utils.command import get_group_command_description, get_command_description
 
 
 class General(commands.Cog, name="general"):
@@ -31,13 +32,13 @@ class General(commands.Cog, name="general"):
                 if isinstance(command, commands.core.Group):
                     group_commands = command
                     for group_command in group_commands.commands:
-                        description = group_command.description.partition("\n")[0]
                         data.append(
-                            f"{prefix}{command.name} {group_command.name} - {description}"
+                            get_group_command_description(
+                                prefix, command, group_command
+                            )
                         )
                 else:
-                    description = command.description.partition("\n")[0]
-                    data.append(f"{prefix}{command.name} - {description}")
+                    data.append(get_command_description(prefix, command))
             help_text = "\n".join(data)
             embed.add_field(
                 name=i.capitalize(), value=f"```{help_text}```", inline=False
