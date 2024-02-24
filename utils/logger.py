@@ -56,3 +56,4 @@ def get_logger(name: str) -> logging.Logger:
     # Add the handlers
     logger.addHandler(console_handler)
     logger.addHandler(file_handler)
+    return logger
