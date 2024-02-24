@@ -28,7 +28,7 @@ class Team(commands.Cog, name="team"):
             self.logger.warning(e)
 
     @commands.hybrid_command(
-        name="q", description="alias of /lol start", aliases=["ㅋ", "큐"]
+        name="q", description="alias of /team start", aliases=["ㅋ", "큐"]
     )
     async def alias_start(self, context: Context) -> None:
         await self.start(context)
@@ -41,7 +41,9 @@ class Team(commands.Cog, name="team"):
             self.logger.warning(e)
 
     @commands.hybrid_command(
-        name="j", description="alias of /lol join", aliases=["ㅊ", "참", "참여", "참가"]
+        name="j",
+        description="alias of /team join",
+        aliases=["ㅊ", "참", "참여", "참가"],
     )
     async def alias_join(self, context: Context) -> None:
         await self.join(context)
@@ -55,7 +57,7 @@ class Team(commands.Cog, name="team"):
 
     @commands.hybrid_command(
         name="c",
-        description="alias of /lol cancel",
+        description="alias of /team cancel",
         aliases=["ㅊㅅ", "취", "취소"],
     )
     async def alias_cencel_join(self, context: Context) -> None:
@@ -70,7 +72,7 @@ class Team(commands.Cog, name="team"):
 
     @commands.hybrid_command(
         name="s",
-        description="alias of /lol shuffle",
+        description="alias of /team shuffle",
         aliases=["ㅅ", "셔", "셔플", "r", "random"],
     )
     async def alias_shuffle(self, context: Context) -> None:
@@ -85,7 +87,7 @@ class Team(commands.Cog, name="team"):
 
     @commands.hybrid_command(
         name="t",
-        description="alias of /lol info",
+        description="alias of /team info",
         aliases=["ㅌ", "팀", "팀확인"],
     )
     async def alias_info(self, context: Context) -> None:
