@@ -41,6 +41,7 @@ class ChatGPT(commands.Cog, name="chatGPT"):
             )
             return
 
+        new_msg = await context.send("이전 메세지를 불러오고 있어요...", ephemeral=True)
         messages = await summarize.get_channel_messages(channel, time)
         if not messages:
             await context.send(
@@ -48,7 +49,7 @@ class ChatGPT(commands.Cog, name="chatGPT"):
             )
             return
 
-        new_msg = await context.send("채팅 내용을 요약할게요...", ephemeral=True)
+        await new_msg.edit(content="요약 중...")
         result = await summarize.get_summary(messages)
         await new_msg.edit(content=result)
         return
