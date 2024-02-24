@@ -1,16 +1,19 @@
 import platform
-import random
 
-import aiohttp
 import discord
 from discord import app_commands
 from discord.ext import commands
 from discord.ext.commands import Context
 
+from bot import ServantBot
+from utils.logger import get_logger
+
 
 class General(commands.Cog, name="general"):
-    def __init__(self, bot) -> None:
+    def __init__(self, bot: ServantBot) -> None:
         self.bot = bot
+        self.config = bot.config
+        self.logger = get_logger("general")
         self.context_menu_user = app_commands.ContextMenu(
             name="Grab ID", callback=self.grab_id
         )
@@ -41,7 +44,7 @@ class General(commands.Cog, name="general"):
             color=0xBEBEFE,
         )
         if spoiler_attachment is not None:
-            embed.set_image(url=attachment.url)
+            embed.set_image(url=spoiler_attachment.url)
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     # User context menu command
@@ -71,12 +74,20 @@ class General(commands.Cog, name="general"):
         for i in self.bot.cogs:
             if i == "owner" and not (await self.bot.is_owner(context.author)):
                 continue
-            cog = self.bot.get_cog(i.lower())
-            commands = cog.get_commands()
+            cog = self.bot.get_cog(i)
+            cog_commands = cog.get_commands()
             data = []
-            for command in commands:
-                description = command.description.partition("\n")[0]
-                data.append(f"{prefix}{command.name} - {description}")
+            for command in cog_commands:
+                if isinstance(command, commands.core.Group):
+                    group_commands = command
+                    for group_command in group_commands.commands:
+                        description = group_command.description.partition("\n")[0]
+                        data.append(
+                            f"{prefix}{command.name} {group_command.name} - {description}"
+                        )
+                else:
+                    description = command.description.partition("\n")[0]
+                    data.append(f"{prefix}{command.name} - {description}")
             help_text = "\n".join(data)
             embed.add_field(
                 name=i.capitalize(), value=f"```{help_text}```", inline=False
@@ -178,5 +189,5 @@ class General(commands.Cog, name="general"):
             await context.send(embed=embed, ephemeral=True)
 
 
-async def setup(bot) -> None:
+async def setup(bot: ServantBot) -> None:
     await bot.add_cog(General(bot))
