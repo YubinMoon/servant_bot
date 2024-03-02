@@ -24,10 +24,10 @@ class TeamDataManager(DatabaseManager):
         self.database.set(f"team:{guild_name}:{team_name}:message", message_id)
         self.database.set(f"team:{guild_name}:last", team_name)
 
-    async def get_team_name(self, guild_name: str) -> str | None:
+    async def get_team_name(self, guild_name: str) -> str:
         value: bytes = self.database.get(f"team:{guild_name}:last")
         if value is None:
-            return None
+            return ""
         return value.decode("utf-8")
 
     async def get_message_id(self, guild_name: str, team_name: str) -> int | None:
@@ -45,7 +45,7 @@ class TeamDataManager(DatabaseManager):
         return [json.loads(member.decode("utf-8"))["id"] for member in members_b]
 
     async def add_member(
-        self, guild_name: str, team_name: str, member: discord.Member
+        self, guild_name: str, team_name: str, member: discord.Member|discord.User
     ) -> None:
         member_data = json.dumps({"id": member.id, "name": member.name})
         self.database.rpush(f"team:{guild_name}:{team_name}:members", member_data)

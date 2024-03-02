@@ -11,6 +11,7 @@ from team import (
     NewTeamHandler,
     ShuffleTeamHandler,
     TeamInfoHandler,
+    TeamPredictHandler,
 )
 from utils.command import get_group_command_description
 from utils.hash import get_random_key
@@ -48,7 +49,7 @@ class Team(commands.Cog, name="team"):
 
     @team.command(name="start", description="새로운 팀 생성")
     @app_commands.describe(name="팀 이름 (중복 시 기존 팀 제거)")
-    async def start(self, context: "Context", name: str | None) -> None:
+    async def start(self, context: "Context", name: str = "") -> None:
         if name is None:
             name = get_random_key(6)
         handler = NewTeamHandler(self.bot, context, name)
@@ -64,12 +65,12 @@ class Team(commands.Cog, name="team"):
         name="q", description="새로운 팀 생성", aliases=["ㅋ", "큐"]
     )
     @app_commands.describe(name="팀 이름 (중복 시 기존 팀 제거)")
-    async def alias_start(self, context: "Context", name: str | None) -> None:
+    async def alias_start(self, context: "Context", name: str = "") -> None:
         await self.start(context, name)
 
     @team.command(name="join", description="생성된 팀에 참가")
     @app_commands.describe(name="팀 이름")
-    async def join(self, context: "Context", name: str | None) -> None:
+    async def join(self, context: "Context", name: str = "") -> None:
         handler = JoinTeamHandler(self.bot, context, name)
         try:
             await handler.run()
@@ -83,12 +84,12 @@ class Team(commands.Cog, name="team"):
         aliases=["ㅊ", "참", "참여", "참가"],
     )
     @app_commands.describe(name="팀 이름")
-    async def alias_join(self, context: "Context", name: str | None) -> None:
+    async def alias_join(self, context: "Context", name: str = "") -> None:
         await self.join(context, name)
 
     @team.command(name="cancel", description="팀 참가 취소")
     @app_commands.describe(name="팀 이름")
-    async def cancel_join(self, context: "Context", name: str | None) -> None:
+    async def cancel_join(self, context: "Context", name: str = "") -> None:
         handler = CancelTeamHandler(self.bot, context, name)
         try:
             await handler.run()
@@ -102,12 +103,12 @@ class Team(commands.Cog, name="team"):
         aliases=["ㅊㅅ", "취", "취소"],
     )
     @app_commands.describe(name="팀 이름")
-    async def alias_cencel_join(self, context: "Context", name: str | None) -> None:
+    async def alias_cencel_join(self, context: "Context", name: str = "") -> None:
         await self.cancel_join(context, name)
 
     @team.command(name="shuffle", description="랜덤 팀 생성")
     @app_commands.describe(name="팀 이름")
-    async def shuffle(self, context: "Context", name: str | None) -> None:
+    async def shuffle(self, context: "Context", name: str = "") -> None:
         handler = ShuffleTeamHandler(self.bot, context, name)
         try:
             await handler.run()
@@ -121,12 +122,12 @@ class Team(commands.Cog, name="team"):
         aliases=["ㅅ", "셔", "셔플", "r", "random"],
     )
     @app_commands.describe(name="팀 이름")
-    async def alias_shuffle(self, context: "Context", name: str | None) -> None:
+    async def alias_shuffle(self, context: "Context", name: str = "") -> None:
         await self.shuffle(context, name)
 
     @team.command(name="info", description="팀 확인")
     @app_commands.describe(name="팀 이름")
-    async def info(self, context: "Context", name: str | None) -> None:
+    async def info(self, context: "Context", name: str = "") -> None:
         handler = TeamInfoHandler(self.bot, context, name)
         try:
             await handler.run()
@@ -140,8 +141,27 @@ class Team(commands.Cog, name="team"):
         aliases=["ㅌ", "팀", "팀확인"],
     )
     @app_commands.describe(name="팀 이름")
-    async def alias_info(self, context: "Context", name: str | None) -> None:
+    async def alias_info(self, context: "Context", name: str = "") -> None:
         await self.info(context, name)
+
+    @team.command(name="predict", description="팀 예측")
+    @app_commands.describe(name="팀 이름")
+    async def predict(self, context: "Context", name: str = "") -> None:
+        handler = TeamPredictHandler(self.bot, context, name)
+        try:
+            await handler.run()
+        except commands.CommandError as e:
+            self.logger.error(e)
+            self.logger.debug(traceback.format_exc())
+
+    @commands.hybrid_command(
+        name="p",
+        description="alias of /team predict",
+        aliases=["ㅂ", "예", "예측"],
+    )
+    @app_commands.describe(name="팀 이름")
+    async def alias_predict(self, context: "Context", name: str = "") -> None:
+        await self.predict(context, name)
 
 
 async def setup(bot: "ServantBot") -> None:

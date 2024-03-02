@@ -11,11 +11,9 @@ from .base import BaseHandler
 class ShuffleTeamHandler(BaseHandler):
     LANE = ["탑", "정글", "미드", "원딜", "서폿"]
 
-    def __init__(
-        self, bot: ServantBot, context: Context, team_name: str | None
-    ) -> None:
+    def __init__(self, bot: ServantBot, context: Context, team_name: str) -> None:
         super().__init__(bot, context, team_name, "new_team_handler")
-        self.base_weight = [[10000 for _ in range(5)] for _ in range(5)]
+        self.base_weight = [[10000.0 for _ in range(5)] for _ in range(5)]
         self.multiple = 0.1
 
     async def run(self):
@@ -36,6 +34,7 @@ class ShuffleTeamHandler(BaseHandler):
         team = await self.get_rank_team()
         await self.db.add_history(self.guild.name, self.team_name, team)
         members = [self.guild.get_member(member) for member in self.members]
+        members = [member for member in members if member is not None]
         embed = discord.Embed(
             description="라인을 배정했어요.",
             color=0xBEBEFE,
@@ -52,6 +51,7 @@ class ShuffleTeamHandler(BaseHandler):
     async def shuffle_custom(self) -> None:
         random.shuffle(self.members)
         members = [self.guild.get_member(member) for member in self.members]
+        members = [member for member in members if member is not None]
         embed = discord.Embed(
             description="새로운 대전을 구성했어요.",
             color=0xBEBEFE,
@@ -84,7 +84,7 @@ class ShuffleTeamHandler(BaseHandler):
             _team[member] = i
         return _team
 
-    async def get_weight(self) -> list[list[int]]:
+    async def get_weight(self) -> list[list[float]]:
         weight = self.base_weight.copy()
         records = await self.db.get_history(self.guild.name, self.team_name)
         for record in records:
@@ -92,17 +92,17 @@ class ShuffleTeamHandler(BaseHandler):
         return weight
 
     def calc_weight(
-        self, weight: list[list[int]], record: list[int]
-    ) -> list[list[int]]:
-        _weight = weight.copy()
+        self, weight: list[list[float]], record: list[int]
+    ) -> list[list[float]]:
+        new_weight = weight.copy()
         for lane_no, member_no in enumerate(record):
-            remain = (_weight[member_no][lane_no] * (1 - self.multiple)) // 4
+            remain = (new_weight[member_no][lane_no] * (1 - self.multiple)) // 4
             for i in range(5):
                 if i == lane_no:
-                    _weight[member_no][i] -= remain * 4
+                    new_weight[member_no][i] -= remain * 4
                 else:
-                    _weight[member_no][i] += remain
-        return _weight
+                    new_weight[member_no][i] += remain
+        return new_weight
 
     async def handle_member_num_check(self):
         embed = discord.Embed(
