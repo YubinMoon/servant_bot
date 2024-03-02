@@ -9,9 +9,7 @@ from .base import BaseHandler
 
 
 class NewTeamHandler(BaseHandler):
-    def __init__(
-        self, bot: ServantBot, context: Context, team_name: str | None
-    ) -> None:
+    def __init__(self, bot: ServantBot, context: Context, team_name: str = "") -> None:
         super().__init__(bot, context, team_name, "new_team_handler")
 
     async def run(self):

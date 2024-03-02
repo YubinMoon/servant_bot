@@ -7,9 +7,7 @@ from .base import BaseHandler
 
 
 class JoinTeamHandler(BaseHandler):
-    def __init__(
-        self, bot: ServantBot, context: Context, team_name: str | None
-    ) -> None:
+    def __init__(self, bot: ServantBot, context: Context, team_name: str = "") -> None:
         super().__init__(bot, context, team_name, "join_team_handler")
 
     async def run(self):
@@ -19,20 +17,19 @@ class JoinTeamHandler(BaseHandler):
             await self.handle_no_team()
             return
         self.members = await self.db.get_members(self.guild.name, self.team_name)
-        # if self.author.id in self.members:
-        #     await self.handle_already_in_team()
-        #     return
+        if self.author.id in self.members:
+            await self.handle_already_in_team()
+            return
         await self.db.add_member(self.guild.name, self.team_name, self.author)
-        await self.update_message()
         message = await self.channel.fetch_message(self.message_id)
+        await self.update_message(message)
         embed = discord.Embed(
             description=f"{self.author.mention}님이 **{self.team_name}**팀에 참가했어요. {message.jump_url}",
             color=0xBEBEFE,
         )
         await self.context.send(embed=embed)
 
-    async def update_message(self) -> None:
-        message = await self.channel.fetch_message(self.message_id)
+    async def update_message(self, message: discord.Message) -> None:
         self.members = await self.db.get_members(self.guild.name, self.team_name)
         embed = message.embeds[0]
         embed.set_field_at(
