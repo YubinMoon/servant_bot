@@ -32,8 +32,8 @@ class ServantBot(commands.Bot):
 
     async def load_db(self) -> None:
         self.database = redis.Redis(
-            host=os.getenv("REDIS_HOST"),
-            port=os.getenv("REDIS_PORT"),
+            host=os.getenv("REDIS_HOST", "localhost"),
+            port=int(os.getenv("REDIS_PORT", 6379)),
             decode_responses=False,
         )
         try:
@@ -86,7 +86,11 @@ class ServantBot(commands.Bot):
         """
         This will just be executed when the bot starts the first time.
         """
-        self.logger.info(f"Logged in as {self.user.name}")
+        if self.user is None:
+            bot_user_name = "Unknown"
+        else:
+            bot_user_name = self.user.name
+        self.logger.info(f"Logged in as {bot_user_name}")
         self.logger.info(f"discord.py API version: {discord.__version__}")
         self.logger.info(f"Python version: {platform.python_version()}")
         self.logger.info(
@@ -118,6 +122,8 @@ class ServantBot(commands.Bot):
 
         :param context: The context of the command that has been executed.
         """
+        if context.command is None:
+            return
         full_command_name = context.command.qualified_name
         split = full_command_name.split(" ")
         executed_command = str(split[0])
