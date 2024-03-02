@@ -61,4 +61,4 @@ intents.members = True
 
 
 bot = ServantBot(intents=intents, config=config)
-bot.run(os.getenv("TOKEN"))
+bot.run(os.getenv("TOKEN", ""))

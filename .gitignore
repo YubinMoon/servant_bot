@@ -153,3 +153,7 @@ discord.log
 
 # Temporary file
 status.txt
+
+# editor file
+*.swp
+

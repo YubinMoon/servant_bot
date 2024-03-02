@@ -1,14 +1,15 @@
 import logging
-from time import time
+from typing import TYPE_CHECKING
 
 import discord
 from discord.ext import commands
-from discord.ext.commands import Context
 
-import summarize
 from chat import ChatHandler
 from database import ChatDataManager
+import summarize
 
+if TYPE_CHECKING:
+    from discord.ext.commands import Context
 
 class ChatGPT(commands.Cog, name="chatGPT"):
     def __init__(self, bot) -> None:
@@ -17,7 +18,7 @@ class ChatGPT(commands.Cog, name="chatGPT"):
         self.logger: logging.Logger = bot.logger
 
     @commands.hybrid_command(name="chat", description="start a new chat with chatGPT.")
-    async def chat(self, context: Context) -> None:
+    async def chat(self, context: "Context") -> None:
         new_msg = await context.send("새 쓰래드를 시작할게요.")
         thread = await new_msg.create_thread(
             name="chat with GPT", auto_archive_duration=60, reason="new chat"
@@ -26,7 +27,7 @@ class ChatGPT(commands.Cog, name="chatGPT"):
         self.logger.info(f"new chat thread created by {context.author.name}")
 
     @commands.hybrid_command(name="summarize", description="summarize the chat.")
-    async def summarize(self, context: Context, *, time: int = 24) -> None:
+    async def summarize(self, context: "Context", *, time: int = 24) -> None:
         channel = context.channel
 
         if not summarize.check_time(time):

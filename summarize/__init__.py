@@ -1,9 +1,14 @@
 import datetime
 import json
 import os
+from typing import TYPE_CHECKING
 
 import discord
 import openai
+
+if TYPE_CHECKING:
+    from discord.abc import MessageableChannel
+    from openai.types.chat import ChatCompletionMessageParam
 
 MAX_DAYS = 10
 ALLOW_CHANNEL_TYPES = [discord.ChannelType.text]
@@ -18,12 +23,12 @@ def check_time(time: int) -> bool:
     return time <= 24 * MAX_DAYS
 
 
-def check_channel(channel: discord.TextChannel) -> bool:
+def check_channel(channel: "MessageableChannel") -> bool:
     return channel.type in ALLOW_CHANNEL_TYPES
 
 
 async def get_channel_messages(
-    channel: discord.TextChannel, time: int
+    channel: "MessageableChannel", time: int
 ) -> list[discord.Message]:
     now = datetime.datetime.now()
     base = now - datetime.timedelta(hours=time)
@@ -51,7 +56,7 @@ def get_message_data(messages: list[discord.Message]) -> list[dict]:
             "file": message.attachments,
             "type": message.type.name,
         }
-        if message.type == discord.MessageType.reply:
+        if message.reference is not None:
             data["reply_from"] = message.reference.message_id
         message_data.append(data)
     return message_data
@@ -63,10 +68,10 @@ async def get_response(message_data: str) -> str:
         model="gpt-3.5-turbo-0125",
         messages=get_chat_message(message_data),
     )
-    return completion.choices[0].message.content
+    return completion.choices[0].message.content or ""
 
 
-def get_chat_message(message_data: str) -> list[dict]:
+def get_chat_message(message_data: str) -> list["ChatCompletionMessageParam"]:
     return [
         {"role": "system", "content": SYSTEM_MESSAGE},
         {"role": "user", "content": message_data},
