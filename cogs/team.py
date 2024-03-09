@@ -19,6 +19,7 @@ from utils.logger import get_logger
 
 if TYPE_CHECKING:
     from discord.ext.commands import Context
+
     from bot import ServantBot
 
 
@@ -29,7 +30,7 @@ class Team(commands.Cog, name="team"):
 
     @commands.hybrid_group(name="team")
     async def team(self, context: "Context") -> None:
-        prefix = self.bot.config["prefix"]
+        prefix: str = self.bot.config["prefix"]
         embed = discord.Embed(
             description="명령어 리스트",
             color=0xBEBEFE,
@@ -48,9 +49,9 @@ class Team(commands.Cog, name="team"):
         await context.send(embed=embed, ephemeral=True)
 
     @team.command(name="start", description="새로운 팀 생성")
-    @app_commands.describe(name="팀 이름 (중복 시 기존 팀 제거)")
+    @app_commands.describe(name="팀 이름")
     async def start(self, context: "Context", name: str = "") -> None:
-        if name is None:
+        if name == "":
             name = get_random_key(6)
         handler = NewTeamHandler(self.bot, context, name)
         join_handler = JoinTeamHandler(self.bot, context, name)
@@ -64,7 +65,7 @@ class Team(commands.Cog, name="team"):
     @commands.hybrid_command(
         name="q", description="새로운 팀 생성", aliases=["ㅋ", "큐"]
     )
-    @app_commands.describe(name="팀 이름 (중복 시 기존 팀 제거)")
+    @app_commands.describe(name="팀 이름")
     async def alias_start(self, context: "Context", name: str = "") -> None:
         await self.start(context, name)
 
