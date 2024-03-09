@@ -1,15 +1,18 @@
 import json
+from typing import TYPE_CHECKING
 
-import discord
-
-from bot import ServantBot
 from utils.logger import get_logger
 
 from .base import DatabaseManager
 
+if TYPE_CHECKING:
+    from discord import Member, User
+
+    from bot import ServantBot
+
 
 class TeamDataManager(DatabaseManager):
-    def __init__(self, bot: ServantBot):
+    def __init__(self, bot: "ServantBot") -> None:
         super().__init__(bot)
         self.logger = get_logger("team_data_manager")
 
@@ -45,7 +48,7 @@ class TeamDataManager(DatabaseManager):
         return [json.loads(member.decode("utf-8"))["id"] for member in members_b]
 
     async def add_member(
-        self, guild_name: str, team_name: str, member: discord.Member|discord.User
+        self, guild_name: str, team_name: str, member: "User" | "Member"
     ) -> None:
         member_data = json.dumps({"id": member.id, "name": member.name})
         self.database.rpush(f"team:{guild_name}:{team_name}:members", member_data)
