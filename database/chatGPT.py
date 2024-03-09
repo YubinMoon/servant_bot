@@ -1,10 +1,13 @@
-import discord
+from typing import TYPE_CHECKING
 
 from .base import DatabaseManager
 
+if TYPE_CHECKING:
+    from bot import ServantBot
+
 
 class ChatDataManager(DatabaseManager):
-    def __init__(self, bot):
+    def __init__(self, bot: "ServantBot") -> None:
         super().__init__(bot)
 
     def set_thread(self, thread_id: int) -> None:
