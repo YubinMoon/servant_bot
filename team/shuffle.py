@@ -1,75 +1,57 @@
 import random
+from typing import TYPE_CHECKING
 
-import discord
-from discord.ext.commands import Context
+from discord import Embed
 
-from bot import ServantBot
+from utils import color
 
 from .base import BaseHandler
+from .error import MemberNumError
+
+if TYPE_CHECKING:
+    from discord import Member
+    from discord.ext.commands import Context
+
+    from bot import ServantBot
 
 
 class ShuffleTeamHandler(BaseHandler):
+    logger_name = "shuffle_team_handler"
     LANE = ["탑", "정글", "미드", "원딜", "서폿"]
 
-    def __init__(self, bot: ServantBot, context: Context, team_name: str) -> None:
-        super().__init__(bot, context, team_name, "new_team_handler")
+    def __init__(self, bot: "ServantBot", context: "Context", team_name: str) -> None:
+        super().__init__(bot, context, team_name)
         self.base_weight = [[10000.0 for _ in range(5)] for _ in range(5)]
         self.multiple = 0.1
 
-    async def run(self):
-        await self.update_team_name()
-        self.message_id = await self.db.get_message_id(self.guild.name, self.team_name)
-        if self.message_id is None:
-            await self.handle_no_team()
-            return
-        self.members = await self.db.get_members(self.guild.name, self.team_name)
-        if len(self.members) not in [5, 10]:
-            await self.handle_member_num_check()
-        if len(self.members) == 5:
-            await self.shuffle_rank()
-        elif len(self.members) == 10:
-            await self.shuffle_custom()
+    async def action(self):
+        members_id = await self.db.get_members(self.guild.name, self.team_name)
+        members = [self.guild.get_member(member) for member in members_id]
+        if len(members) not in [5, 10]:
+            raise MemberNumError(
+                f"Team {self.team_name} has {len(members)} members. It should be 5 or 10.",
+                self.team_name,
+            )
+        if len(members) == 5:
+            await self.shuffle_rank(members)
+        elif len(members) == 10:
+            await self.shuffle_custom(members)
 
-    async def shuffle_rank(self) -> None:
+    async def shuffle_rank(self, members: "list[Member]") -> None:
         team = await self.get_rank_team()
         await self.db.add_history(self.guild.name, self.team_name, team)
-        members = [self.guild.get_member(member) for member in self.members]
-        members = [member for member in members if member is not None]
-        embed = discord.Embed(
+        embed = Embed(
+            title=f"{self.team_name} 팀",
             description="라인을 배정했어요.",
-            color=0xBEBEFE,
+            color=color.BASE,
         )
         for l, m in enumerate(team):
             member = members[m]
             embed.add_field(
                 name=self.LANE[l],
-                value=f"{member.mention} ({member.global_name})",
+                value=f"{member.mention} ({member.global_name or member.name})",
                 inline=False,
             )
-        await self.context.send(embed=embed)
-
-    async def shuffle_custom(self) -> None:
-        random.shuffle(self.members)
-        members = [self.guild.get_member(member) for member in self.members]
-        members = [member for member in members if member is not None]
-        embed = discord.Embed(
-            description="새로운 대전을 구성했어요.",
-            color=0xBEBEFE,
-        )
-        embed.add_field(
-            name="1팀",
-            value="\n".join(
-                [f"{member.mention} ({member.global_name})" for member in members[:5]]
-            ),
-            inline=False,
-        )
-        embed.add_field(
-            name="2팀",
-            value="\n".join(
-                [f"{member.mention} ({member.global_name})" for member in members[5:]]
-            ),
-            inline=False,
-        )
         await self.context.send(embed=embed)
 
     async def get_rank_team(self) -> list[int]:
@@ -79,10 +61,10 @@ class ShuffleTeamHandler(BaseHandler):
             team.clear()
             for i in range(5):
                 team.append(random.choices(range(5), weights=weights[i])[0])
-        _team = team.copy()
+        new_team = team.copy()
         for i, member in enumerate(team):
-            _team[member] = i
-        return _team
+            new_team[member] = i
+        return new_team
 
     async def get_weight(self) -> list[list[float]]:
         weight = self.base_weight.copy()
@@ -104,13 +86,31 @@ class ShuffleTeamHandler(BaseHandler):
                     new_weight[member_no][i] += remain
         return new_weight
 
-    async def handle_member_num_check(self):
-        embed = discord.Embed(
-            title="팀 인원이 5명 또는 10명이 아니에요.",
-            description="팀 인원을 확인해 주세요.",
-            color=0xE02B2B,
+    async def shuffle_custom(self, members: "list[Member]") -> None:
+        random.shuffle(members)
+        embed = Embed(
+            title=f"{self.team_name} 팀",
+            description="새로운 대전을 구성했어요.",
+            color=0xBEBEFE,
         )
-        await self.context.send(embed=embed, ephemeral=True, silent=True)
-        self.logger.warning(
-            f"{self.context.author.name} tried to shuffle team with wrong member number."
+        embed.add_field(
+            name="1팀",
+            value="\n".join(
+                [
+                    f"{member.mention} ({member.global_name or member.name})"
+                    for member in members[:5]
+                ]
+            ),
+            inline=False,
         )
+        embed.add_field(
+            name="2팀",
+            value="\n".join(
+                [
+                    f"{member.mention} ({member.global_name or member.name})"
+                    for member in members[5:]
+                ]
+            ),
+            inline=False,
+        )
+        await self.context.send(embed=embed)

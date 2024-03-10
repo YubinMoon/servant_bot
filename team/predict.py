@@ -2,79 +2,47 @@ from typing import TYPE_CHECKING
 
 import discord
 
-from .base import BaseHandler
+from .error import RankMemberNumError
+from .shuffle import ShuffleTeamHandler
 
 if TYPE_CHECKING:
+    from discord import Member
     from discord.ext.commands import Context
 
     from bot import ServantBot
 
 
-class TeamPredictHandler(BaseHandler):
+class TeamPredictHandler(ShuffleTeamHandler):
+    logger_name = "team_predict_handler"
+
     def __init__(self, bot: "ServantBot", context: "Context", team_name: str) -> None:
-        super().__init__(bot, context, team_name, "team_info_handler")
-        self.base_weight = [[10000.0 for _ in range(5)] for _ in range(5)]
-        self.multiple = 0.1
+        super().__init__(bot, context, team_name)
 
-    async def run(self):
-        await self.update_team_name()
-        self.message_id = await self.db.get_message_id(self.guild.name, self.team_name)
-        if self.message_id is None:
-            await self.handle_no_team()
-            return
-        self.members = await self.db.get_members(self.guild.name, self.team_name)
-        if len(self.members) == 5:
-            await self.predict()
+    async def action(self):
+        members_id = await self.db.get_members(self.guild.name, self.team_name)
+        members = [self.guild.get_member(member) for member in members_id]
+        if len(members) == 5:
+            await self.predict(members)
         else:
-            await self.handle_no_rank_member()
+            raise RankMemberNumError(
+                f"Team {self.team_name} has {len(members_id)} members. It should be 5.",
+                self.team_name,
+            )
 
-    async def predict(self) -> None:
+    async def predict(self, members: "list[Member]") -> None:
         weight = await self.get_weight()
-        members = [self.guild.get_member(member) for member in self.members]
-        members = [member for member in members if member is not None]
         embed = discord.Embed(
-            title="라인 예측",
-            description="라인을 예측했어요.",
+            title=f"{self.team_name} 팀 라인 예측",
             color=0xBEBEFE,
         )
         for i, m in enumerate(weight):
             member = members[i]
             weight_sum = sum(m)
-            percent = [f"{int(w/weight_sum*100)}%" for w in m]
+            percent = [int(w / weight_sum * 100) for w in m]
+            data = [f"`{l}`: **{p}**%" for l, p in zip(self.LANE, percent)]
             embed.add_field(
-                name=f"{member.mention}",
-                value=f"`TOP:`**{percent[0]}** `JG:`**{percent[1]}** `MID:`**{percent[2]}** `BOT:`**{percent[3]}** `SUP:`**{percent[4]}**",
+                name=f"**{member.display_name}** ({member.global_name or member.name})",
+                value=" - ".join(data),
                 inline=False,
             )
         await self.context.send(embed=embed, ephemeral=True, silent=True)
-
-    async def get_weight(self) -> list[list[float]]:
-        weight = self.base_weight.copy()
-        records = await self.db.get_history(self.guild.name, self.team_name)
-        for record in records:
-            weight = self.calc_weight(weight, record)
-        return weight
-
-    def calc_weight(
-        self, weight: list[list[float]], record: list[int]
-    ) -> list[list[float]]:
-        new_weight = weight.copy()
-        for lane_no, member_no in enumerate(record):
-            remain = (new_weight[member_no][lane_no] * (1 - self.multiple)) // 4
-            for i in range(5):
-                if i == lane_no:
-                    new_weight[member_no][i] -= remain * 4
-                else:
-                    new_weight[member_no][i] += remain
-        return new_weight
-
-    async def handle_no_rank_member(self):
-        embed = discord.Embed(
-            title="팀 인원이 5명이 아닙니다.",
-            description="팀 인원을 확인해 주세요.",
-            color=0xE02B2B,
-        )
-        await self.context.send(embed=embed, ephemeral=True, silent=True)
-        self.logger.warning(
-            f"{self.context.author.name} tried to shuffle team with wrong member number."
-        )

@@ -19,14 +19,6 @@ class ServantBot(commands.Bot):
             intents=intents,
             help_command=None,
         )
-        """
-        This creates custom bot variables so that we can access these variables in cogs more easily.
-
-        For example, The config is available using the following code:
-        - self.config # In this class
-        - bot.config # In this file
-        - self.bot.config # In cogs
-        """
         self.logger = get_logger("servant_bot")
         self.config = config
 
@@ -58,6 +50,7 @@ class ServantBot(commands.Bot):
                     self.logger.error(
                         f"Failed to load extension {extension}\n{exception}"
                     )
+                    self.logger.debug(traceback.format_exc())
 
     @tasks.loop(minutes=1.0)
     async def status_task(self) -> None:

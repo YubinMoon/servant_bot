@@ -1,55 +1,52 @@
-import discord
-from discord.ext.commands import Context
+from typing import TYPE_CHECKING
 
-from bot import ServantBot
+from discord import Embed
 
-from .base import BaseHandler
+from utils import color
+
+from .error import AlreadyOutTeamError
+from .join import JoinTeamHandler
+
+if TYPE_CHECKING:
+    from discord import Message
+    from discord.ext.commands import Context
+
+    from bot import ServantBot
 
 
-class CancelTeamHandler(BaseHandler):
+class CancelTeamHandler(JoinTeamHandler):
+    logger_name = "cancel_team_handler"
+
     def __init__(
-        self, bot: ServantBot, context: Context, team_name: str | None
+        self, bot: "ServantBot", context: "Context", team_name: str = ""
     ) -> None:
-        super().__init__(bot, context, team_name, "cancel_team_handler")
+        super().__init__(bot, context, team_name)
 
-    async def run(self):
-        await self.update_team_name()
-        self.message_id = await self.db.get_message_id(self.guild.name, self.team_name)
-        if self.message_id is None:
-            await self.handle_no_team()
-            return
-        self.members = await self.db.get_members(self.guild.name, self.team_name)
-        if self.author.id not in self.members:
-            await self.handle_not_a_member()
-            return
-        index = self.members.index(self.author.id)
+    async def action(self):
+        index = await self.get_member_index()
         await self.db.pop_member(self.guild.name, self.team_name, index)
         await self.update_message()
+        self.logger.info(
+            f"{self.author} (ID: {self.author.id}) cancel joining the team {self.team_name}."
+        )
 
-        embed = discord.Embed(
-            description=f"{self.author.mention}님이 팀 등록을 취소했어요.",
-            color=0xBEBEFE,
+    async def get_member_index(self):
+        members_id = await self.get_members_id()
+        index = members_id.index(self.author.id)
+        return index
+
+    async def get_members_id(self):
+        members_id = await self.db.get_members(self.guild.name, self.team_name)
+        if self.author.id not in members_id:
+            raise AlreadyOutTeamError(
+                f"{self.author} (ID: {self.author.id}) tried to cancel joining a team that the user is not in.",
+                self.team_name,
+            )
+        return members_id
+
+    async def notify(self, message: "Message"):
+        embed = Embed(
+            description=f"{self.author.mention}님이 **{self.team_name}**팀 등록을 취소했어요.  {message.jump_url}",
+            color=color.BASE,
         )
         await self.context.send(embed=embed, silent=True)
-
-    async def update_message(self) -> None:
-        message = await self.channel.fetch_message(self.message_id)
-        self.members = await self.db.get_members(self.guild.name, self.team_name)
-        embed = message.embeds[0]
-        embed.set_field_at(
-            index=0,
-            name=f"현제 인원: {len(self.members)}",
-            value=" - ".join([f"<@{member_id}>" for member_id in self.members]),
-        )
-        await message.edit(embed=embed)
-
-    async def handle_not_a_member(self):
-        embed = discord.Embed(
-            title="팀에 참가하지 않았어요.",
-            description="**/j**로 팀에 먼저 참가해 주세요.",
-            color=0xE02B2B,
-        )
-        await self.context.send(embed=embed, ephemeral=True, silent=True)
-        self.logger.warning(
-            f"{self.author} (ID: {self.author.id}) tried to cancel joining a team that the user is not in."
-        )
