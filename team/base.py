@@ -1,55 +1,56 @@
-import traceback
 from typing import TYPE_CHECKING
-
-import discord
 
 from database import TeamDataManager
 from utils.logger import get_logger
 
+from .error import NoTeamError, TeamBaseError
+
 if TYPE_CHECKING:
+    from discord import Embed
     from discord.ext.commands import Context
 
     from bot import ServantBot
 
 
 class BaseHandler:
+    logger_name = "base_handler"
+
     def __init__(
         self,
         bot: "ServantBot",
         context: "Context",
         team_name: str,
-        logger_name: str,
     ) -> None:
-        self.bot = bot
-        self.context = context
         if context.guild is None:
             raise ValueError("Guild is not found.")
+
+        self.bot = bot
+        self.context = context
         self.guild = context.guild
         self.author = context.author
         self.channel = context.channel
         self.team_name = team_name
         self.db = TeamDataManager(bot)
-        self.logger = get_logger(logger_name)
+        self.logger = get_logger(self.logger_name)
 
-    async def run(self):
+    async def run(self) -> None:
+        try:
+            await self.check_team_name()
+            await self.action()
+        except TeamBaseError as e:
+            await self.send_error_message(e.get_embed())
+            self.logger.error(e)
+
+    async def check_team_name(self):
+        if self.team_name == "":
+            team_name = await self.db.get_team_name(self.guild.name)
+            if team_name is None:
+                self.logger.error("There is no team.")
+                raise NoTeamError("There is no team.")
+            self.team_name = team_name
+
+    async def action(self) -> None:
         raise NotImplementedError
 
-    async def update_team_name(self):
-        try:
-            if self.team_name == "":
-                self.team_name = await self.db.get_team_name(self.guild.name)
-        except Exception:
-            self.logger.error("Error occurred while getting team name.")
-            self.logger.debug(traceback.format_exc())
-            self.team_name = ""
-
-    async def handle_no_team(self):
-        embed = discord.Embed(
-            title="팀이 생성되지 않았어요.",
-            description="**/q**로 팀을 먼저 생성해 주세요.",
-            color=0xE02B2B,
-        )
+    async def send_error_message(self, embed: "Embed") -> None:
         await self.context.send(embed=embed, ephemeral=True, silent=True)
-        self.logger.warning(
-            f"{self.author} (ID: {self.author.id}) tried to interact a team that does not exist."
-        )

@@ -16,21 +16,23 @@ class TeamDataManager(DatabaseManager):
         super().__init__(bot)
         self.logger = get_logger("team_data_manager")
 
-    async def start_team(
-        self, guild_name: str, message_id: int, team_name: str
-    ) -> None:
-        # delete previous team data
-        keys: list[bytes] = self.database.keys(f"team:{guild_name}:{team_name}:*")
-        for key in keys:
-            self.database.delete(key.decode("utf-8"))
-            self.logger.debug(f"Deleted key: {key.decode('utf-8')}")
+    async def new_team(self, guild_name: str, message_id: int, team_name: str) -> None:
+        await self._delete_previous_team(guild_name, team_name)
         self.database.set(f"team:{guild_name}:{team_name}:message", message_id)
         self.database.set(f"team:{guild_name}:last", team_name)
 
-    async def get_team_name(self, guild_name: str) -> str:
+    async def _delete_previous_team(self, guild_name: str, team_name: str) -> None:
+        keys: list[bytes] = self.database.keys(f"team:{guild_name}:{team_name}:*")
+        if keys:
+            self.logger.warning(f"overwrite team: {team_name}")
+            for key in keys:
+                self.database.delete(key.decode("utf-8"))
+                self.logger.debug(f"Deleted key: {key.decode('utf-8')}")
+
+    async def get_team_name(self, guild_name: str) -> str | None:
         value: bytes = self.database.get(f"team:{guild_name}:last")
         if value is None:
-            return ""
+            return None
         return value.decode("utf-8")
 
     async def get_message_id(self, guild_name: str, team_name: str) -> int | None:
@@ -43,12 +45,12 @@ class TeamDataManager(DatabaseManager):
         members_b: list[bytes] = self.database.lrange(
             f"team:{guild_name}:{team_name}:members", 0, -1
         )
-        if not members_b:
+        if members_b == []:
             return []
         return [json.loads(member.decode("utf-8"))["id"] for member in members_b]
 
     async def add_member(
-        self, guild_name: str, team_name: str, member: "User" | "Member"
+        self, guild_name: str, team_name: str, member: "Member | User"
     ) -> None:
         member_data = json.dumps({"id": member.id, "name": member.name})
         self.database.rpush(f"team:{guild_name}:{team_name}:members", member_data)
@@ -72,6 +74,6 @@ class TeamDataManager(DatabaseManager):
         history_b: list[bytes] = self.database.lrange(
             f"team:{guild_name}:{team_name}:history", 0, -1
         )
-        if not history_b:
+        if history_b == []:
             return []
         return [json.loads(history.decode("utf-8")) for history in history_b]

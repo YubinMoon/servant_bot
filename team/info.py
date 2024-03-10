@@ -1,27 +1,43 @@
-import discord
-from discord.ext.commands import Context
+from typing import TYPE_CHECKING
 
-from bot import ServantBot
+from discord import Embed
+
+from utils import color
 
 from .base import BaseHandler
+from .error import NoMemberError
+
+if TYPE_CHECKING:
+    from discord import Member
+    from discord.ext.commands import Context
+
+    from bot import ServantBot
 
 
 class TeamInfoHandler(BaseHandler):
-    def __init__(
-        self, bot: ServantBot, context: Context, team_name: str | None
-    ) -> None:
-        super().__init__(bot, context, team_name, "team_info_handler")
+    logger_name = "team_info_handler"
 
-    async def run(self):
-        await self.update_team_name()
-        self.message_id = await self.db.get_message_id(self.guild.name, self.team_name)
-        if self.message_id is None:
-            await self.handle_no_team()
-            return
-        self.members = await self.db.get_members(self.guild.name, self.team_name)
-        members = [self.guild.get_member(member) for member in self.members]
-        embed = discord.Embed(
-            color=0xBEBEFE,
+    def __init__(
+        self, bot: "ServantBot", context: "Context", team_name: str = ""
+    ) -> None:
+        super().__init__(bot, context, team_name)
+
+    async def action(self):
+        members = await self.get_members()
+        await self.send_result(members)
+
+    async def get_members(self):
+        members_id = await self.db.get_members(self.guild.name, self.team_name)
+        members = [self.guild.get_member(member) for member in members_id]
+        members = [member for member in members if member is not None]
+        if members == []:
+            raise NoMemberError(f"No member in {self.team_name} team.", self.team_name)
+        return members
+
+    async def send_result(self, members: "list[Member]"):
+        embed = Embed(
+            title=f"**{self.team_name}** 팀",
+            color=color.BASE,
         )
         embed.add_field(
             name=f"현재 팀원: {len(members)}",
