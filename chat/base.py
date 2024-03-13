@@ -25,7 +25,7 @@ class BaseHandler:
         try:
             await self.action(*args, **kwargs)
         except ChatBaseError as e:
-            self.send_error_message(e.get_embed())
+            await self.send_error_message(e.get_embed())
             self.logger.error(e)
 
     async def action(self):
@@ -49,7 +49,7 @@ class BaseMessageHandler(BaseHandler):
         self.key: str = generate_key(str(self.thread.id), 6)
 
     async def send_error_message(self, embed: "Embed") -> None:
-        await self.thread.send(embed=embed, ephemeral=True, silent=True)
+        await self.thread.send(embed=embed, silent=True)
 
 
 class BaseCommandHandler(BaseHandler):
