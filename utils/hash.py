@@ -4,7 +4,7 @@ import string
 
 
 def generate_key(source: str, length: int) -> str:
-    hashed_string = hashlib.sha256(source.encode()).hexdigest()
+    hashed_string = hashlib.sha256(source.encode()).hexdigest().upper()
     key = hashed_string[:length]
     return key
 
