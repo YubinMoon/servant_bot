@@ -71,7 +71,10 @@ class BaseFunction:
             "parameters": parameters,
         }
 
-    def process(self, *args, **kwargs):
+    async def process(self, *args, **kwargs):
+        raise NotImplementedError
+
+    async def display(self) -> list[str, str]:
         raise NotImplementedError
 
 
@@ -102,6 +105,7 @@ class ImageGenerator(BaseFunction):
     ]
 
     async def process(self, prompt: str, size: str, style: str):
+        self.prompt = prompt
         self.client = openai.AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         response = await self.client.images.generate(
             prompt=prompt,
@@ -117,6 +121,9 @@ class ImageGenerator(BaseFunction):
             file=file,
         )
         return "이미지 생성 및 출력 완료"
+
+    async def display(self) -> list[str, str]:
+        return ["dall-e 3 이미지 생성", self.prompt]
 
 
 class ToolHandler:
@@ -146,3 +153,8 @@ class ToolHandler:
 
         arguments = json.loads(arguments)
         return await self.functions[tool].process(**arguments)
+
+    async def get_display(self, tool: str) -> list[str, str]:
+        if tool not in self.functions:
+            raise ValueError("invalid tool name")
+        return await self.functions[tool].display()

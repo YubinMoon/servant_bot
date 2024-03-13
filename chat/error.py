@@ -26,3 +26,29 @@ class UnknownCommandError(ChatBaseError):
             color=color.ERROR,
         )
         return embed
+
+
+class ChatResponseError(ChatBaseError):
+    def __init__(self, message: str):
+        super().__init__(message)
+
+    def get_embed(self):
+        embed = Embed(
+            title="챗봇 응답에 문제가 있어요.",
+            description=f"detail\n```\n{self.message}\n```",
+            color=color.ERROR,
+        )
+        return embed
+
+
+class ContentFilterError(ChatBaseError):
+    def __init__(self, message: str):
+        super().__init__(message)
+
+    def get_embed(self):
+        embed = Embed(
+            title="여러므로 문자가 되는 질문이에요.",
+            description=f"정상적인 질문을 입력해 주세요.",
+            color=color.ERROR,
+        )
+        return embed

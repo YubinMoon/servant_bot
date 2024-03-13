@@ -4,9 +4,13 @@ from time import time
 from typing import TYPE_CHECKING, AsyncGenerator
 
 import openai
-from discord import Embed
+from discord import Embed, HTTPException
+from openai import APIError
+
+from utils import color
 
 from ..base import BaseMessageHandler
+from ..error import ChatResponseError, ContentFilterError
 from .function import ToolHandler
 from .model import ChatResponse
 
@@ -20,12 +24,13 @@ if TYPE_CHECKING:
 class ChatHandler(BaseMessageHandler):
     logger_name = "chat_handler"
     role_list = ["system", "user", "assistant", "tool"]
+    base_response_txt = "생각 중..."
 
     def __init__(self, bot: "ServantBot", message: "Message") -> None:
         super().__init__(bot, message)
         self.client = openai.AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         self.cooldown = 1.5
-        self.response_txt = "생각 중..."
+        self.response_txt = self.base_response_txt
         self.old_response_txt = self.response_txt
         self.tool_handler = ToolHandler(bot, self.thread)
 
@@ -73,8 +78,36 @@ class ChatHandler(BaseMessageHandler):
         self.append_user_message(self.message.content)
         self.res_message = await self.thread.send(self.response_txt)
         while True:
-            res = None
-            now = time()
+            res = await self.chat_response()
+            if res is None:
+                return
+            res_content = res.choices[0].delta.content
+            res_finish_reason = res.choices[0].finish_reason
+
+            if res_content is not None:
+                self.append_assistant_message(res.choices[0].delta.content)
+                if res_finish_reason == ["tool_calls", "length"]:
+                    self.res_message = await self.thread.send(self.base_response_txt)
+
+            if res_finish_reason == "stop":
+                break
+            elif res_finish_reason == "tool_calls":
+                self.append_tool_calls(res.choices[0].delta.model_dump()["tool_calls"])
+                await self.handle_tool_calls(res.choices[0].delta.tool_calls)
+                self.res_message = await self.thread.send(self.base_response_txt)
+            elif res_finish_reason == "length":
+                self.logger.warning("response finished because of length")
+            elif res_finish_reason == "content_filter":
+                await self.res_message.delete()
+                self.logger.error("response finished because of content filter")
+                raise ContentFilterError("response finished because of content filter")
+            else:
+                self.logger.warning(f"finish_reason: {res.choices[0].finish_reason}")
+
+    async def chat_response(self) -> "ChatResponse":
+        res: ChatResponse = None
+        now: float = time()
+        try:
             async for response in self.get_response():
                 res = response if res is None else res + response
                 self.response_txt = self.get_content(res)
@@ -88,21 +121,18 @@ class ChatHandler(BaseMessageHandler):
             await self.edit_message()
             await self.res_message.add_reaction("✅")
             self.logger.debug(f"chat response: {res.model_dump_json()}")
-
-            if res.choices[0].delta.content is not None:
-                self.append_assistant_message(res.choices[0].delta.content)
-
-            if res.choices[0].finish_reason == "stop":
-                break
-            elif res.choices[0].finish_reason == "tool_calls":
-                self.append_tool_calls(res.choices[0].delta.model_dump()["tool_calls"])
-                await self.handle_tool_calls(res.choices[0].delta.tool_calls)
+        except APIError as e:
+            await self.res_message.delete()
+            raise ChatResponseError(e.message)
+        except HTTPException as e:
+            await self.logger.warn("discord length max error")
+        return res
 
     async def get_response(self) -> AsyncGenerator[ChatResponse, None]:
         messages = self.get_messages()
         completion = await self.client.chat.completions.create(
             messages=messages,
-            model="gpt-4-1106-preview",
+            model="gpt-3.5-turbo-0125",
             tools=self.tool_handler.get_tools(),
             stream=True,
         )
@@ -115,7 +145,7 @@ class ChatHandler(BaseMessageHandler):
             res_content = res.choices[0].delta.content
         elif res.choices[0].delta.tool_calls:
             for tool_call in res.choices[0].delta.tool_calls:
-                res_content += f"{tool_call.function.name} 호출됨\n"
+                res_content += f"{tool_call.function.name} 호출 중...\n"
         return res_content
 
     async def edit_message(self) -> None:
@@ -180,12 +210,16 @@ class ChatHandler(BaseMessageHandler):
         self.db.append_message(self.guild.name, self.key, data)
 
     async def handle_tool_calls(self, tool_calls: "list[ChoiceDeltaToolCall]") -> None:
+        embed = Embed(title="기능 호출", color=color.BASE)
         for tool_call in tool_calls:
             if tool_call.type == "function":
                 function_name = tool_call.function.name
                 function_args = tool_call.function.arguments
                 response = await self.tool_handler.process(function_name, function_args)
                 self.append_tool_message(tool_call.id, response)
+                name, value = await self.tool_handler.get_display(function_name)
+                embed.add_field(name=name, value=value, inline=True)
+        await self.res_message.edit(content="", embed=embed)
 
     def message_line(self, role: str, content: str) -> dict:
         self.role_check(role)
