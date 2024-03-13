@@ -5,7 +5,6 @@ import logging
 import os
 from typing import Any
 
-import aiohttp
 import discord
 import openai
 from discord import Thread
@@ -78,9 +77,7 @@ class BaseFunction:
 
 class ImageGenerator(BaseFunction):
     name = "dall-e"
-    description = (
-        "dall-e 3로 이미지를 생성하기 위한 함수. 생성된 이미지는 자동으로 사용자에게 보여지므로 추가로 이미지를 출력하지 않아도 됩니다."
-    )
+    description = "dall-e 3로 이미지를 생성하기 위한 함수. 생성된 이미지는 자동으로 사용자에게 보여지므로 추가로 이미지를 출력하지 않아도 됩니다."
     argument = [
         Argument(
             "prompt",

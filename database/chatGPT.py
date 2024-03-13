@@ -10,18 +10,24 @@ class ChatDataManager(DatabaseManager):
     def __init__(self, bot: "ServantBot") -> None:
         super().__init__(bot)
 
-    def set_thread(self, thread_id: int) -> None:
-        obj = {
-            "messages": [],
-            "system": "",
-        }
-        self.database.json().set(f"chat:{thread_id}", "$", obj)
+    def has_lock(self, guild_name: str, key: str) -> bool:
+        num_of_keys = self.database.exists(f"chat:{guild_name}:{key}:lock")
+        return num_of_keys > 0
 
-    def get_thread(self, thread_id: int) -> dict | None:
-        return self.database.json().get(f"chat:{thread_id}", "$")[0]
+    def lock(self, guild_name: str, key: str) -> None:
+        self.database.set(f"chat:{guild_name}:{key}:lock", "1")
 
-    def thread_exists(self, thread_id: int) -> bool:
-        return self.database.exists(f"chat:{thread_id}")
+    def unlock(self, guild_name: str, key: str) -> None:
+        self.database.delete(f"chat:{guild_name}:{key}:lock")
 
-    def append_message(self, thread_id: int, message: dict) -> None:
-        self.database.json().arrappend(f"chat:{thread_id}", "$.messages", message)
+    def get_system_message(self, guild_name: str, key: str) -> None:
+        return self.database.get(f"chat:{guild_name}:{key}:system")
+
+    def get_messages(self, guild_name: str, key: str) -> list[dict]:
+        return self.database.json().get(f"chat:{guild_name}:{key}:messages", "$")[0]
+
+    def append_message(self, guild_name: str, key: str, message: dict) -> None:
+        self.database.json().set(f"chat:{guild_name}:{key}:messages", "$", [], nx=True)
+        self.database.json().arrappend(
+            f"chat:{guild_name}:{key}:messages", "$", message
+        )

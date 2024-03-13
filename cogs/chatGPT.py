@@ -1,30 +1,29 @@
 import logging
 from typing import TYPE_CHECKING
 
-import discord
+from discord import ChannelType
 from discord.ext import commands
 
-from chat import ChatHandler
-from database import ChatDataManager
 import summarize
+from chat import ChatHandler, CommandHandler, NewChatHandler
+from utils.logger import get_logger
 
 if TYPE_CHECKING:
+    from discord import Message
     from discord.ext.commands import Context
 
+    from bot import ServantBot
+
+
 class ChatGPT(commands.Cog, name="chatGPT"):
-    def __init__(self, bot) -> None:
+    def __init__(self, bot: "ServantBot") -> None:
         self.bot = bot
-        self.db = ChatDataManager(bot)
-        self.logger: logging.Logger = bot.logger
+        self.logger = get_logger("chatGPT")
 
     @commands.hybrid_command(name="chat", description="start a new chat with chatGPT.")
     async def chat(self, context: "Context") -> None:
-        new_msg = await context.send("새 쓰래드를 시작할게요.")
-        thread = await new_msg.create_thread(
-            name="chat with GPT", auto_archive_duration=60, reason="new chat"
-        )
-        self.db.set_thread(thread.id)
-        self.logger.info(f"new chat thread created by {context.author.name}")
+        handler = NewChatHandler(self.bot, context)
+        await handler.run()
 
     @commands.hybrid_command(name="summarize", description="summarize the chat.")
     async def summarize(self, context: "Context", *, time: int = 24) -> None:
@@ -56,15 +55,17 @@ class ChatGPT(commands.Cog, name="chatGPT"):
         return
 
     @commands.Cog.listener()
-    async def on_message(self, message: discord.Message) -> None:
+    async def on_message(self, message: "Message") -> None:
         if message.author.bot:
             return
 
-        if message.channel.type == discord.ChannelType.public_thread:
-            handler = ChatHandler(self.bot, self.db, message)
-            await handler.chat_response()
-            return
+        if message.channel.type == ChannelType.public_thread:
+            if message.content.startswith("?"):
+                handler = CommandHandler(self.bot, message)
+            else:
+                handler = ChatHandler(self.bot, message)
+            await handler.run()
 
 
-async def setup(bot) -> None:
+async def setup(bot: "ServantBot") -> None:
     await bot.add_cog(ChatGPT(bot))
