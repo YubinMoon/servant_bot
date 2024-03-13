@@ -132,7 +132,7 @@ class ChatHandler(BaseMessageHandler):
         messages = self.get_messages()
         completion = await self.client.chat.completions.create(
             messages=messages,
-            model="gpt-3.5-turbo-0125",
+            model="gpt-4-0125-preview",
             tools=self.tool_handler.get_tools(),
             stream=True,
         )
