@@ -52,6 +52,12 @@ class ChatManager:
 
             if res_content is not None:
                 self._append_assistant_message(res_content)
+                if res_finish_reason == "tool_calls":
+                    await self.res_chat_message.add_reaction("✅")
+                    res_content = ""
+                    for tool_call in res.choices[0].delta.tool_calls:
+                        res_content += f"{tool_call.function.name} 호출 중...\n"
+                    self.res_chat_message = await self.channel.send(res_content)
 
             if res_finish_reason == "stop":
                 await self.res_chat_message.add_reaction("✅")
