@@ -30,7 +30,16 @@ class ChatDataManager(DatabaseManager):
         self.database.set(f"chat:{guild_name}:{key}:system", message)
 
     def get_messages(self, guild_name: str, key: str) -> list[dict]:
-        return self.database.json().get(f"chat:{guild_name}:{key}:messages", "$")[0]
+        data = self.database.json().get(f"chat:{guild_name}:{key}:messages", "$")
+        self.database.json().arrpop
+        if data is None:
+            return []
+        return data[0]
+
+    def trim_messages(self, guild_name: str, key: str, max_length: int) -> None:
+        self.database.json().arrtrim(
+            f"chat:{guild_name}:{key}:messages", "$", 0, max_length
+        )
 
     def append_message(self, guild_name: str, key: str, message: dict) -> None:
         self.database.json().set(f"chat:{guild_name}:{key}:messages", "$", [], nx=True)

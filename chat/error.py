@@ -52,3 +52,16 @@ class ContentFilterError(ChatBaseError):
             color=color.ERROR,
         )
         return embed
+
+
+class NoHistoryError(ChatBaseError):
+    def __init__(self, message: str):
+        super().__init__(message)
+
+    def get_embed(self):
+        embed = Embed(
+            title="이전 대화가 없어요.",
+            description=f"새로운 대화를 시작해 주세요.",
+            color=color.ERROR,
+        )
+        return embed

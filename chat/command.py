@@ -1,12 +1,14 @@
+import asyncio
 from typing import TYPE_CHECKING
 
-from discord import Embed
+from discord import Embed, HTTPException, NotFound
 
 from utils import color
 from utils.logger import get_logger
 
 from .base import BaseMessageHandler
-from .error import UnknownCommandError
+from .chat.manager import ChatManager
+from .error import NoHistoryError, UnknownCommandError
 
 if TYPE_CHECKING:
     from discord import Message
@@ -26,6 +28,12 @@ class BaseCommand:
         self.handler = handler
         self.args = args
         self.logger = get_logger(self.logger_name)
+        self.bot = handler.bot
+        self.db = handler.db
+        self.guild = handler.guild
+        self.thread = handler.thread
+        self.message = handler.message
+        self.key = handler.key
 
     async def run(self):
         raise NotImplementedError
@@ -121,18 +129,58 @@ class Retry(BaseCommand):
         args: list[str] = [],
     ):
         super().__init__(handler, args)
+        self.chat_manager = ChatManager(self.bot, self.thread)
 
     async def run(self):
-        text = self.get_text()
-        await self.handler.thread.send(text)
+        if await self.is_lock():
+            return
+        try:
+            self.db.lock(self.guild.name, self.key)
+            await self.delete_old_response()
+            await self.message.delete()
+            await self.chat_manager.run_task()
+        except Exception as e:
+            raise e
+        finally:
+            self.db.unlock(self.guild.name, self.key)
 
-    def get_text(self):
-        text = [
-            "## 재시도",
-            "이전 명령어를 다시 시도합니다.",
-        ]
+    async def is_lock(self) -> bool:
+        if self.db.has_lock(self.guild.name, self.key):
+            embed = Embed(
+                title="아직 답변이 완료되지 않았어요.",
+            )
+            reply_msg = await self.message.reply(embed=embed)
+            await asyncio.sleep(delay=3)
+            await reply_msg.delete()
+            await self.message.delete()
+            return True
+        return False
 
-        return "\n".join(text)
+    async def delete_old_response(self):
+        old_response = self.db.get_messages(self.guild.name, self.key)
+        self.logger.info(old_response)
+        if old_response == []:
+            raise NoHistoryError("No history found.")
+        last_user_message_index = self.get_last_user_message_index(old_response)
+        self.db.trim_messages(self.guild.name, self.key, last_user_message_index)
+        useless_messages = old_response[last_user_message_index + 1 :]
+
+        useless_messages_id = set([data["message_id"] for data in useless_messages])
+        for message_id in useless_messages_id:
+            try:
+                message = await self.thread.fetch_message(message_id)
+                self.logger.info(
+                    f"Deleting message: ({message_id}) - {message.content}"
+                )
+                await message.delete()
+            except HTTPException:
+                self.logger.warning(f"Message not found: {message_id}")
+
+    def get_last_user_message_index(self, old_response: list[dict]):
+        for i in range(len(old_response) - 1, 0, -1):
+            if old_response[i]["message"]["role"] == "user":
+                return i
+        return 0
 
 
 class CommandHandler(BaseMessageHandler):
