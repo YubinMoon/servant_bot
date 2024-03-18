@@ -60,8 +60,8 @@ class ChatGPT(commands.Cog, name="chatGPT"):
             return
 
         if (
-            message.channel.type == ChannelType.public_thread
-            and message.channel.owner == self.bot.user
+            message.channel.owner == self.bot.user
+            and message.channel.type == ChannelType.public_thread
         ):
             if message.content.startswith("?"):
                 handler = CommandHandler(self.bot, message)
