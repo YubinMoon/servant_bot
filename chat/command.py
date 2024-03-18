@@ -20,12 +20,7 @@ class BaseCommand:
     logger_name = "base_command"
     name = "base"
 
-    def __init__(
-        self,
-        handler: "CommandHandler",
-        args: list[str] = [],
-    ):
-        self.handler = handler
+    def __init__(self, handler: "CommandHandler", args: list[str] = []):
         self.args = args
         self.logger = get_logger(self.logger_name)
         self.bot = handler.bot
@@ -43,16 +38,12 @@ class CommandList(BaseCommand):
     logger_name = "command_list_command"
     name = ""
 
-    def __init__(
-        self,
-        handler: "CommandHandler",
-        args: list[str] = [],
-    ):
+    def __init__(self, handler: "CommandHandler", args: list[str] = []):
         super().__init__(handler, args)
 
     async def run(self):
         text = self.get_text()
-        await self.handler.thread.send(text)
+        await self.thread.send(text)
 
     def get_text(self):
         text = [
@@ -70,11 +61,7 @@ class System(BaseCommand):
     logger_name = "system_command"
     name = "system"
 
-    def __init__(
-        self,
-        handler: "CommandHandler",
-        args: list[str] = [],
-    ):
+    def __init__(self, handler: "CommandHandler", args: list[str] = []):
         super().__init__(handler, args)
         self.new_text = " ".join(args)
 
@@ -86,37 +73,33 @@ class System(BaseCommand):
             await self.set_system_message()
 
     async def show_system_message(self):
-        guild_name = self.handler.guild.name
-        key = self.handler.key
 
-        system_message = self.handler.db.get_system_message(guild_name, key)
-
-        if system_message is None:
-            system_message = "`시스템 메시지가 없어요.`"
+        system_message = self.get_system_message()
 
         embed = Embed(
             title="시스템 메시지",
             description=system_message,
             color=color.BASE,
         )
-        await self.handler.thread.send(embed=embed)
+        await self.thread.send(embed=embed)
 
     async def set_system_message(self):
-        guild_name = self.handler.guild.name
-        key = self.handler.key
+        old_system_message = self.get_system_message()
 
-        old_text = self.handler.db.get_system_message(guild_name, key)
-        if old_text is None:
-            old_text = "`시스템 메시지가 없어요.`"
-
-        self.handler.db.set_system_message(guild_name, key, self.new_text)
+        self.db.set_system_message(self.guild.name, self.key, self.new_text)
         embed = Embed(
             title="시스템 메시지 변경",
             color=color.BASE,
         )
-        embed.add_field(name="변경 전", value=old_text, inline=False)
+        embed.add_field(name="변경 전", value=old_system_message, inline=False)
         embed.add_field(name="변경 후", value=self.new_text, inline=False)
-        await self.handler.thread.send(embed=embed)
+        await self.thread.send(embed=embed)
+
+    def get_system_message(self):
+        system_message = self.db.get_system_message(self.guild.name, self.key)
+        if system_message is None:
+            system_message = "`시스템 메시지가 없어요.`"
+        return system_message
 
 
 class Retry(BaseCommand):
@@ -158,7 +141,6 @@ class Retry(BaseCommand):
 
     async def delete_old_response(self):
         old_response = self.db.get_messages(self.guild.name, self.key)
-        self.logger.info(old_response)
         if old_response == []:
             raise NoHistoryError("No history found.")
         last_user_message_index = self.get_last_user_message_index(old_response)
