@@ -21,7 +21,10 @@ class ChatDataManager(DatabaseManager):
         self.database.delete(f"chat:{guild_name}:{key}:lock")
 
     def get_system_message(self, guild_name: str, key: str) -> str | None:
-        return self.database.get(f"chat:{guild_name}:{key}:system")
+        raw_text = self.database.get(f"chat:{guild_name}:{key}:system")
+        if raw_text is None:
+            return None
+        return raw_text.decode("utf-8")
 
     def set_system_message(self, guild_name: str, key: str, message: str) -> None:
         self.database.set(f"chat:{guild_name}:{key}:system", message)

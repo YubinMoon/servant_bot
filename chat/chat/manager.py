@@ -141,10 +141,11 @@ class ChatManager:
         messages = []
         system_message = self.db.get_system_message(self.guild.name, self.key)
         if system_message:
-            messages += {"role": "system", "content": system_message}
+            messages.append({"role": "system", "content": system_message})
         raw_messages = self.db.get_messages(self.guild.name, self.key)
         for message in raw_messages:
             messages.append(message["message"])
+        self.logger.info(messages)
         return messages
 
     def append_user_message(self, content: str, message_id: int) -> None:
