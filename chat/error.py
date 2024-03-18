@@ -22,7 +22,7 @@ class UnknownCommandError(ChatBaseError):
     def get_embed(self):
         embed = Embed(
             title="알 수 없는 명령어에요.",
-            description="**?**으로 사용 가능한 명령어를 확인해 주세요.",
+            description="**'?'**으로 사용 가능한 명령어를 확인해 주세요.",
             color=color.ERROR,
         )
         return embed

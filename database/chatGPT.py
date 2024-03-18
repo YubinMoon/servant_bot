@@ -20,8 +20,11 @@ class ChatDataManager(DatabaseManager):
     def unlock(self, guild_name: str, key: str) -> None:
         self.database.delete(f"chat:{guild_name}:{key}:lock")
 
-    def get_system_message(self, guild_name: str, key: str) -> None:
+    def get_system_message(self, guild_name: str, key: str) -> str | None:
         return self.database.get(f"chat:{guild_name}:{key}:system")
+
+    def set_system_message(self, guild_name: str, key: str, message: str) -> None:
+        self.database.set(f"chat:{guild_name}:{key}:system", message)
 
     def get_messages(self, guild_name: str, key: str) -> list[dict]:
         return self.database.json().get(f"chat:{guild_name}:{key}:messages", "$")[0]
