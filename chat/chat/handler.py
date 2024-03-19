@@ -37,6 +37,7 @@ class ChatHandler(BaseMessageHandler):
             await self.handle_file()
             await self.handle_content()
             await self.chat_manager.run_task()
+            await self.update_channel_name()
         except Exception as e:
             raise e
         finally:
@@ -51,7 +52,7 @@ class ChatHandler(BaseMessageHandler):
             reply_msg = await self.message.reply(embed=embed)
             await asyncio.sleep(10)
             await reply_msg.delete()
-            await self.message.delete()
+            asyncio.create_task(self.update_channel_name())
             return True
         return False
 
@@ -75,3 +76,8 @@ class ChatHandler(BaseMessageHandler):
         if content == "":
             return
         self.chat_manager.append_user_message(self.message.content, self.message.id)
+
+    async def update_channel_name(self) -> None:
+        new_name = await self.chat_manager.get_channel_name()
+        self.logger.info(f"channel name: {self.thread.name} -> {new_name}")
+        # set to db

@@ -38,9 +38,34 @@ class ChatManager:
         self.tool_handler = ToolHandler(bot, channel)
         self.key: str = generate_key(str(channel.id), 6)
         self.max_token: int = bot.config["token_threshold"]
+        self.chat_model: str = bot.config["main_chat_model"]
+        self.sub_chat_model: str = bot.config["sub_chat_model"]
 
         self.response_txt = self.base_response_txt
         self.old_response_txt = self.response_txt
+
+    async def get_channel_name(self) -> str:
+        messages = []
+        messages.append({"role": "system", "content": ""})
+        raw_messages = self.db.get_messages(self.guild.name, self.key)
+        for message in raw_messages:
+            messages.append(message["message"])
+        messages.append(
+            {
+                "role": "user",
+                "content": "이전까지의 대화를 바탕으로 이 대화를 저장 할 파일의 제목을 작성해 최대한 간단하게",
+            }
+        )
+        completion = await self.client.chat.completions.create(
+            messages=messages,
+            model=self.sub_chat_model,
+            max_tokens=20,
+        )
+        result = completion.choices[0].message.content
+        finish_reasom = completion.choices[0].finish_reason
+        if finish_reasom != "stop":
+            self.logger.warn(f"finish reason: {finish_reasom}")
+        return result
 
     async def run_task(self) -> None:
         self.res_chat_message = await self.channel.send(self.base_response_txt)
@@ -108,7 +133,7 @@ class ChatManager:
         self.logger.debug(f"token: {num_tokens_from_messages(messages)}")
         completion = await self.client.chat.completions.create(
             messages=messages,
-            model="gpt-4-0125-preview",
+            model=self.chat_model,
             tools=self.tool_handler.get_tools(),
             stream=True,
         )
@@ -155,7 +180,7 @@ class ChatManager:
                 embed.add_field(name=name, value=value, inline=True)
         await self.res_chat_message.edit(content="", embed=embed)
 
-    def get_messages(self) -> list[dict]:
+    def get_messages(self) -> list:
         messages = []
         system_message = self.db.get_system_message(self.guild.name, self.key)
         if system_message:
@@ -163,7 +188,6 @@ class ChatManager:
         raw_messages = self.db.get_messages(self.guild.name, self.key)
         for message in raw_messages:
             messages.append(message["message"])
-        self.logger.debug(f"messages: {messages}")
         return messages
 
     def append_user_message(self, content: str, message_id: int) -> None:
