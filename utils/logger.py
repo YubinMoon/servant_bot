@@ -1,5 +1,11 @@
 import logging
 import os
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from discord import Embed
+
+    from bot import ServantBot
 
 
 class LoggingFormatter(logging.Formatter):
@@ -61,3 +67,9 @@ def get_logger(name: str) -> logging.Logger:
     logger.addHandler(console_handler)
     logger.addHandler(file_handler)
     return logger
+
+
+async def send_to_owner(bot: "ServantBot", embed: "Embed"):
+    info = await bot.application_info()
+    owner = info.owner
+    await owner.send(embed=embed)
