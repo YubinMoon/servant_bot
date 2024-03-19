@@ -8,6 +8,7 @@ from discord import Embed, HTTPException
 
 from database import ChatDataManager
 from utils import color
+from utils.chat import num_tokens_from_messages
 from utils.hash import generate_key
 from utils.logger import get_logger
 
@@ -102,6 +103,7 @@ class ChatManager:
 
     async def _get_response_stream(self) -> AsyncGenerator[ChatResponse, None]:
         messages = self.get_messages()
+        self.logger.debug(f"token: {num_tokens_from_messages(messages)}")
         completion = await self.client.chat.completions.create(
             messages=messages,
             model="gpt-4-0125-preview",
@@ -145,7 +147,7 @@ class ChatManager:
         raw_messages = self.db.get_messages(self.guild.name, self.key)
         for message in raw_messages:
             messages.append(message["message"])
-        self.logger.info(messages)
+        self.logger.debug(f"messages: {messages}")
         return messages
 
     def append_user_message(self, content: str, message_id: int) -> None:
