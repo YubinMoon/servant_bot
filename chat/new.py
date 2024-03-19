@@ -1,8 +1,11 @@
 from typing import TYPE_CHECKING
 
+from discord import ChannelType
+
 from utils.hash import generate_key
 
 from .base import BaseCommandHandler
+from .error import ChannelCreateError
 
 if TYPE_CHECKING:
     from discord import Message, Thread
@@ -18,6 +21,7 @@ class NewChatHandler(BaseCommandHandler):
         super().__init__(bot, context)
 
     async def action(self):
+        await self.check_channel_type()
         new_msg: Message = await self.context.send(f"새 쓰래드를 시작할게요.")
         thread = await new_msg.create_thread(
             name="chat with GPT", auto_archive_duration=60, reason="new chat"
@@ -27,6 +31,10 @@ class NewChatHandler(BaseCommandHandler):
         await new_msg.edit(content=f"새 쓰래드를 시작했어요. (key={key})")
         await self.send_welcome_message(thread)
         self.logger.info(f"new chat thread created by {self.author.name}, key={key}")
+
+    async def check_channel_type(self) -> None:
+        if self.context.channel.type is not ChannelType.text:
+            raise ChannelCreateError(f"The channel is not a text channel.")
 
     async def send_welcome_message(self, thread: "Thread") -> None:
         welcome_text = self.get_welcome_text()
