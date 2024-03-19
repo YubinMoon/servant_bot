@@ -1,4 +1,5 @@
 {
   "prefix": "!",
-  "invite_link": "https://discord.com/oauth2/authorize?client_id=958659958843523122&permissions=8192&scope=bot+applications.commands"
+  "invite_link": "https://discord.com/oauth2/authorize?client_id=958659958843523122&permissions=8192&scope=bot+applications.commands",
+  "token_threshold": 3000
 }

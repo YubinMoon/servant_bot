@@ -10,7 +10,7 @@ from database import ChatDataManager
 from utils import color
 from utils.chat import num_tokens_from_messages
 from utils.hash import generate_key
-from utils.logger import get_logger
+from utils.logger import get_logger, send_to_owner
 
 from ..error import ChatResponseError, ContentFilterError
 from .function import ToolHandler
@@ -37,6 +37,7 @@ class ChatManager:
         self.logger = get_logger("chat_manager")
         self.tool_handler = ToolHandler(bot, channel)
         self.key: str = generate_key(str(channel.id), 6)
+        self.max_token: int = bot.config["token_threshold"]
 
         self.response_txt = self.base_response_txt
         self.old_response_txt = self.response_txt
@@ -103,6 +104,7 @@ class ChatManager:
 
     async def _get_response_stream(self) -> AsyncGenerator[ChatResponse, None]:
         messages = self.get_messages()
+        await self.check_token(messages)
         self.logger.debug(f"token: {num_tokens_from_messages(messages)}")
         completion = await self.client.chat.completions.create(
             messages=messages,
@@ -112,6 +114,20 @@ class ChatManager:
         )
         async for event in completion:
             yield ChatResponse(event.model_dump())
+
+    async def check_token(self, messages: list[dict]) -> None:
+        token = num_tokens_from_messages(messages)
+        if token > self.max_token:
+            self.logger.warn(f"over token: {token}")
+            embed = Embed(
+                title="Too many tokens in Request!",
+                description=f"token: {token}",
+                color=color.BASE,
+            )
+            embed.add_field(name="thread", value=f"{self.channel.name}", inline=False)
+            embed.add_field(name="shortcut", value=self.channel.jump_url, inline=False)
+            self.logger.warn(f"send to owner")
+            await send_to_owner(self.bot, embed)
 
     async def _edit_message(self) -> None:
         if self.response_txt:
