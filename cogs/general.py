@@ -6,8 +6,8 @@ from discord.ext import commands
 from discord.ext.commands import Context
 
 from bot import ServantBot
+from utils.command import get_command_description, get_group_command_description
 from utils.logger import get_logger
-from utils.command import get_group_command_description, get_command_description
 
 
 class General(commands.Cog, name="general"):

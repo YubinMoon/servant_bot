@@ -5,7 +5,7 @@ from discord import ChannelType
 from discord.ext import commands
 
 import summarize
-from chat import ChatHandler, CommandHandler, NewChatHandler
+from chatGPT import ChatHandler, CommandHandler, NewChatHandler
 from utils.logger import get_logger
 
 if TYPE_CHECKING:
