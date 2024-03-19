@@ -63,4 +63,4 @@ class BaseCommandHandler(BaseHandler):
         self.channel = context.channel
 
     async def send_error_message(self, embed: "Embed") -> None:
-        await self.channel.send(embed=embed, ephemeral=True, silent=True)
+        await self.context.send(embed=embed, ephemeral=True, silent=True)

@@ -65,3 +65,16 @@ class NoHistoryError(ChatBaseError):
             color=color.ERROR,
         )
         return embed
+
+
+class ChannelCreateError(ChatBaseError):
+    def __init__(self, message: str):
+        super().__init__(message)
+
+    def get_embed(self):
+        embed = Embed(
+            title="채널 생성에 실패했어요.",
+            description=f"detail\n```\n{self.message}\n```",
+            color=color.ERROR,
+        )
+        return embed
