@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import openai
 from discord import Embed
+from httpx import delete
 
 from ..base import BaseMessageHandler
 from .function import ToolHandler
@@ -44,16 +45,19 @@ class ChatHandler(BaseMessageHandler):
 
     async def is_lock(self) -> bool:
         if self.db.has_lock(self.guild.name, self.key):
-            embed = Embed(
-                title="아직 답변이 완료되지 않았어요.",
-                description="10초 뒤에 질문이 삭제됩니다.",
-            )
-            reply_msg = await self.message.reply(embed=embed)
-            await asyncio.sleep(10)
-            asyncio.create_task(reply_msg.delete())
-            asyncio.create_task(self.message.delete())
+            asyncio.create_task(self.delete_process())
             return True
         return False
+
+    async def delete_process(self):
+        embed = Embed(
+            title="아직 답변이 완료되지 않았어요.",
+            description="10초 뒤에 질문이 삭제됩니다.",
+        )
+        reply_msg = await self.message.reply(embed=embed)
+        await asyncio.sleep(10)
+        await reply_msg.delete()
+        await self.message.delete()
 
     async def handle_file(self) -> None:
         files = self.message.attachments

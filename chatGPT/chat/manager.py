@@ -95,6 +95,7 @@ class ChatManager:
                 await self.res_chat_message.add_reaction("✅")
                 self.res_chat_message = await self.channel.send(self.base_response_txt)
             elif res_finish_reason == "length":
+                self.append_more_message()
                 self.res_chat_message = await self.channel.send(self.base_response_txt)
                 self.logger.warning("response finished because of length")
             elif res_finish_reason == "content_filter":
@@ -130,6 +131,7 @@ class ChatManager:
     async def _get_response_stream(self) -> AsyncGenerator[ChatResponse, None]:
         messages = self.get_messages()
         await self.check_token(messages)
+        self.logger.debug(f"messages: {messages}")
         self.logger.debug(f"token: {num_tokens_from_messages(messages)}")
         completion = await self.client.chat.completions.create(
             messages=messages,
@@ -189,6 +191,10 @@ class ChatManager:
         for message in raw_messages:
             messages.append(message["message"])
         return messages
+
+    def append_more_message(self):
+        content = "The previous output was cut off. Please continue where you left off on the last output based on our previous messages."
+        self.append_user_message(content, 0)
 
     def append_user_message(self, content: str, message_id: int) -> None:
         data = {
