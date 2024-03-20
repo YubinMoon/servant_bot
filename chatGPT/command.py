@@ -52,6 +52,7 @@ class CommandList(BaseCommand):
             "- ?system: 시스템 메시지를 확인합니다.",
             "- ?system `[str]`: 시스템 메시지를 `[str]`로 변경합니다.",
             "- ?retry: 이전 응답을 다시 생성합니다. (기존 응답은 삭제됩니다.)",
+            "- ?more: 이전 응답에 추가로 응답을 생성합니다.",
         ]
 
         return "\n".join(text)
@@ -106,11 +107,7 @@ class Retry(BaseCommand):
     logger_name = "retry_command"
     name = "retry"
 
-    def __init__(
-        self,
-        handler: "CommandHandler",
-        args: list[str] = [],
-    ):
+    def __init__(self, handler: "CommandHandler", args: list[str] = []):
         super().__init__(handler, args)
         self.chat_manager = ChatManager(self.bot, self.thread)
 
@@ -120,7 +117,7 @@ class Retry(BaseCommand):
         try:
             self.db.lock(self.guild.name, self.key)
             await self.delete_old_response()
-            await self.message.delete()
+            asyncio.create_task(self.message.delete())
             await self.chat_manager.run_task()
         except Exception as e:
             raise e
@@ -129,15 +126,18 @@ class Retry(BaseCommand):
 
     async def is_lock(self) -> bool:
         if self.db.has_lock(self.guild.name, self.key):
-            embed = Embed(
-                title="아직 답변이 완료되지 않았어요.",
-            )
-            reply_msg = await self.message.reply(embed=embed)
-            await asyncio.sleep(delay=3)
-            await reply_msg.delete()
-            await self.message.delete()
+            asyncio.create_task(self.delete_process())
             return True
         return False
+
+    async def delete_process(self):
+        embed = Embed(
+            title="아직 답변이 완료되지 않았어요.",
+        )
+        reply_msg = await self.message.reply(embed=embed)
+        await asyncio.sleep(delay=3)
+        await reply_msg.delete()
+        await self.message.delete()
 
     async def delete_old_response(self):
         old_response = self.db.get_messages(self.guild.name, self.key)
@@ -165,12 +165,31 @@ class Retry(BaseCommand):
         return 0
 
 
+class More(Retry):
+    logger_name = "more_command"
+    name = "more"
+
+    async def run(self):
+        if await self.is_lock():
+            return
+        try:
+            self.db.lock(self.guild.name, self.key)
+            asyncio.create_task(self.message.delete())
+            self.chat_manager.append_more_message()
+            await self.chat_manager.run_task()
+        except Exception as e:
+            raise e
+        finally:
+            self.db.unlock(self.guild.name, self.key)
+
+
 class CommandHandler(BaseMessageHandler):
     logger_name = "command_handler"
     commands: list[type[BaseCommand]] = [
         CommandList,
         System,
         Retry,
+        More,
     ]
 
     def __init__(self, bot: "ServantBot", message: "Message") -> None:
