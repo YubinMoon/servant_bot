@@ -1,18 +1,16 @@
-version: "3"
-
 services:
-  gpt-bot:
-    build: .
-    restart: always
-    depends_on:
-      - redis
+    gpt-bot:
+        build: .
+        restart: always
+        depends_on:
+            - redis
 
-  redis:
-    image: redis/redis-stack:latest
-    restart: always
-    ports:
-      - "${REDIS_PORT}:6379"
-      - "${REDIS_WEB_PORT}:8001"
-    volumes:
-      - "./database:/data"
-      - "./database/redis.conf:/redis-stack.conf"
+    redis:
+        image: redis/redis-stack:latest
+        restart: always
+        ports:
+            - "${REDIS_PORT}:6379"
+            - "${REDIS_WEB_PORT}:8001"
+        volumes:
+            - "./database:/data"
+            - "./database/redis.conf:/redis-stack.conf"
