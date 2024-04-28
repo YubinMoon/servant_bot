@@ -4,9 +4,10 @@ from typing import TYPE_CHECKING
 from discord import ChannelType
 from discord.ext import commands
 
-import summarize
-from chatGPT import ChatHandler, CommandHandler, NewChatHandler
 from utils.logger import get_logger
+
+from . import summarize
+from .chatGPT import ChatHandler, CommandHandler, NewChatHandler
 
 if TYPE_CHECKING:
     from discord import Message

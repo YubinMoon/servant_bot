@@ -5,7 +5,11 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from team import (
+from utils.command import get_group_command_description
+from utils.hash import get_random_key
+from utils.logger import get_logger
+
+from .handler import (
     CancelTeamHandler,
     JoinTeamHandler,
     NewTeamHandler,
@@ -13,9 +17,6 @@ from team import (
     TeamInfoHandler,
     TeamPredictHandler,
 )
-from utils.command import get_group_command_description
-from utils.hash import get_random_key
-from utils.logger import get_logger
 
 if TYPE_CHECKING:
     from discord.ext.commands import Context
