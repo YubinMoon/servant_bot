@@ -39,9 +39,8 @@ class ServantBot(commands.Bot):
         """
         The code in this function is executed whenever the bot will start.
         """
-        for file in os.listdir("cogs"):
-            if file.endswith(".py"):
-                extension = file[:-3]
+        for extension in os.listdir("cogs"):
+            if extension.startswith("cog_"):
                 try:
                     await self.load_extension(f"cogs.{extension}")
                     self.logger.info(f"Loaded extension '{extension}'")
