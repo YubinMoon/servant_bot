@@ -4,8 +4,8 @@ from discord import ChannelType
 
 from utils.hash import generate_key
 
+from ..error import ChannelCreateError
 from .base import BaseCommandHandler
-from .error import ChannelCreateError
 
 if TYPE_CHECKING:
     from discord import Message, Thread

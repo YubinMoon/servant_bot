@@ -13,8 +13,8 @@ from utils.hash import generate_key
 from utils.logger import get_logger, send_to_owner
 
 from ..error import ChatResponseError, ContentFilterError
-from .function import ToolHandler
 from .model import ChatResponse
+from .tool import ToolHandler
 
 if TYPE_CHECKING:
     from discord.abc import MessageableChannel
