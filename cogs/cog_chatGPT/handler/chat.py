@@ -6,9 +6,9 @@ import openai
 from discord import Embed
 from httpx import delete
 
-from ..base import BaseMessageHandler
-from .function import ToolHandler
-from .manager import ChatManager
+from ..chat.manager import ChatManager
+from ..chat.tool import ToolHandler
+from .base import BaseMessageHandler
 
 if TYPE_CHECKING:
     from discord import Message

@@ -6,9 +6,9 @@ from discord import Embed, HTTPException, NotFound
 from utils import color
 from utils.logger import get_logger
 
+from ..chat.manager import ChatManager
+from ..error import NoHistoryError, UnknownCommandError
 from .base import BaseMessageHandler
-from .chat.manager import ChatManager
-from .error import NoHistoryError, UnknownCommandError
 
 if TYPE_CHECKING:
     from discord import Message

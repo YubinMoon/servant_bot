@@ -4,7 +4,7 @@ from database import ChatDataManager
 from utils.hash import generate_key
 from utils.logger import get_logger
 
-from .error import ChatBaseError
+from ..error import ChatBaseError
 
 if TYPE_CHECKING:
     from discord import Embed, Message
