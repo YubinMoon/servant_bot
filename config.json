@@ -1,7 +1,7 @@
 {
   "prefix": "!",
   "invite_link": "https://discord.com/oauth2/authorize?client_id=958659958843523122&permissions=8192&scope=bot+applications.commands",
-  "main_chat_model": "gpt-4-0125-preview",
-  "sub_chat_model": "gpt-3.5-turbo-0125",
+  "main_chat_model": "gpt-3.5-turbo",
+  "sub_chat_model": "gpt-3.5-turbo",
   "token_threshold": 5000
 }
