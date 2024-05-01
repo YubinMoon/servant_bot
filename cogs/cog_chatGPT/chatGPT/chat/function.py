@@ -132,7 +132,7 @@ class ToolHandler:
         self.logger: logging.Logger = bot.logger
         self.channel = channel
         functions: list[BaseFunction] = [
-            ImageGenerator(self),
+            # ImageGenerator(self),
         ]
         self.functions = {function.name: function for function in functions}
 
@@ -145,7 +145,7 @@ class ToolHandler:
                     "function": func.get_tools(),
                 }
             )
-        return tools
+        return tools or None
 
     async def process(self, tool: str, arguments: str):
         if tool not in self.functions:
