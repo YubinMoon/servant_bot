@@ -1,14 +1,15 @@
 import asyncio
-import os
+import traceback
 from typing import TYPE_CHECKING
 
 import openai
 from discord import Embed
-from httpx import delete
+
+from utils.file import txt_files_from_message
 
 from ..chat.agent import AgentManager
-from ..chat.callback import ChatCallback
-from ..chat.manager import ChatManager
+from ..chat.callback import CalcTokenCallback, ChatCallback
+from ..chat.manager import UserTokenManager
 from ..chat.tool import ToolManager
 from ..error import ChatBaseError, ChatResponseError
 from .base import BaseMessageHandler
@@ -28,26 +29,32 @@ class ChatHandler(BaseMessageHandler):
         self.cooldown = 1.5
         self.response_txt = self.base_response_txt
         self.old_response_txt = self.response_txt
-        self.tool_handler = ToolManager(bot, self.thread)
+        self.chat_callback = ChatCallback(bot, message=message)
+        self.token_callback = CalcTokenCallback()
+        self.user_token_manager = UserTokenManager(bot, message.author)
+        self.tool_manager = ToolManager(bot, self.thread)
         self.agent_manager = AgentManager(bot, message)
-        self.chat_callback = ChatCallback(bot, message)
 
     async def action(self):
         if await self.is_lock():
             return
         try:
             self.db.lock(self.guild.name, self.key)
-            agent = self.agent_manager.get_agent()
+            contents = await self.get_contents()
+            await self.user_token_manager.check_balance()
+            agent = self.agent_manager.get_agent(self.tool_manager.get_tools())
             await agent.ainvoke(
-                {"input": self.message.content},
+                {"input": contents},
                 config={
                     "configurable": {"session_id": ""},
-                    "callbacks": [self.chat_callback],
+                    "callbacks": [self.chat_callback, self.token_callback],
                 },
             )
+            await self.user_token_manager.token_process(self.token_callback.to_dict())
         except openai.APIError as e:
             raise ChatResponseError(e.message)
         except Exception as e:
+            traceback.print_exc()
             raise ChatBaseError(str(e))
         finally:
             self.db.unlock(self.guild.name, self.key)
@@ -58,6 +65,16 @@ class ChatHandler(BaseMessageHandler):
             return True
         return False
 
+    async def get_contents(self) -> str:
+        contents = []
+        files = txt_files_from_message(self.message)
+        for file in files:
+            content: bytes = await file.read()
+            contents.append(content.decode("utf-8"))
+
+        contents.append(self.message.content)
+        return "\n\n".join(contents)
+
     async def delete_process(self):
         embed = Embed(
             title="아직 답변이 완료되지 않았어요.",
@@ -67,29 +84,3 @@ class ChatHandler(BaseMessageHandler):
         await asyncio.sleep(10)
         await reply_msg.delete()
         await self.message.delete()
-
-    async def handle_file(self) -> None:
-        files = self.message.attachments
-        for file in files:
-            if file.filename.endswith(".txt"):
-                content = await file.read()
-                self.chat_manager.append_user_message(
-                    content.decode("utf-8"), self.message.id
-                )
-                if self.message.content == "":
-                    embed = Embed(
-                        title="'txt' 파일 업로드 완료",
-                        description="채팅 질문과 함께 입력돼요.",
-                    )
-                    await self.message.reply(embed=embed)
-
-    async def handle_content(self) -> None:
-        content = self.message.content
-        if content == "":
-            return
-        self.chat_manager.append_user_message(self.message.content, self.message.id)
-
-    async def update_channel_name(self) -> None:
-        new_name = await self.chat_manager.get_channel_name()
-        self.logger.info(f"channel name: {self.thread.name} -> {new_name}")
-        # set to db

@@ -6,7 +6,6 @@ from discord import Embed, HTTPException, NotFound
 from utils import color
 from utils.logger import get_logger
 
-from ..chat.manager import ChatManager
 from ..error import NoHistoryError, UnknownCommandError
 from .base import BaseMessageHandler
 
@@ -109,7 +108,7 @@ class Retry(BaseCommand):
 
     def __init__(self, handler: "CommandHandler", args: list[str] = []):
         super().__init__(handler, args)
-        self.chat_manager = ChatManager(self.bot, self.thread)
+        # self.chat_manager = ChatManager(self.bot, self.thread)
 
     async def run(self):
         if await self.is_lock():
@@ -118,7 +117,7 @@ class Retry(BaseCommand):
             self.db.lock(self.guild.name, self.key)
             await self.delete_old_response()
             asyncio.create_task(self.message.delete())
-            await self.chat_manager.run_task()
+            # await self.chat_manager.run_task()
         except Exception as e:
             raise e
         finally:
@@ -175,8 +174,8 @@ class More(Retry):
         try:
             self.db.lock(self.guild.name, self.key)
             asyncio.create_task(self.message.delete())
-            self.chat_manager.append_more_message()
-            await self.chat_manager.run_task()
+            # self.chat_manager.append_more_message()
+            # await self.chat_manager.run_task()
         except Exception as e:
             raise e
         finally:
