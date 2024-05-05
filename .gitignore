@@ -50,7 +50,8 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 cover/
-test.py
+test*.py
+test*.ipynb
 
 # Translations
 *.mo
@@ -156,4 +157,3 @@ status.txt
 
 # editor file
 *.swp
-

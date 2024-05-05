@@ -5,3 +5,5 @@ openai==1.6.1
 hiredis==2.3.2
 redis==5.0.1
 tiktoken==0.6.0
+langchain==0.1.17
+langchain-openai==0.1.5

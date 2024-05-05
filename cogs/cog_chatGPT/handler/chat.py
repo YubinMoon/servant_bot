@@ -6,8 +6,10 @@ import openai
 from discord import Embed
 from httpx import delete
 
+from ..chat.agent import AgentManager
+from ..chat.callback import ChatCallback
 from ..chat.manager import ChatManager
-from ..chat.tool import ToolHandler
+from ..chat.tool import ToolManager
 from .base import BaseMessageHandler
 
 if TYPE_CHECKING:
@@ -18,26 +20,34 @@ if TYPE_CHECKING:
 
 class ChatHandler(BaseMessageHandler):
     logger_name = "chat_handler"
-    role_list = ["system", "user", "assistant", "tool"]
     base_response_txt = "생각 중..."
 
     def __init__(self, bot: "ServantBot", message: "Message") -> None:
         super().__init__(bot, message)
-        self.client = openai.AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         self.cooldown = 1.5
         self.response_txt = self.base_response_txt
         self.old_response_txt = self.response_txt
-        self.tool_handler = ToolHandler(bot, self.thread)
+        self.tool_handler = ToolManager(bot, self.thread)
         self.chat_manager = ChatManager(bot, self.thread)
+        self.agent_manager = AgentManager(bot, message)
+        self.chat_callback = ChatCallback(bot, message)
 
     async def action(self):
         if await self.is_lock():
             return
         try:
             self.db.lock(self.guild.name, self.key)
-            await self.handle_file()
-            await self.handle_content()
-            await self.chat_manager.run_task()
+            # await self.handle_file()
+            # await self.handle_content()
+            # await self.chat_manager.run_task()
+            agent = self.agent_manager.get_agent()
+            await agent.ainvoke(
+                {"input": self.message.content},
+                config={
+                    "configurable": {"session_id": ""},
+                    "callbacks": [self.chat_callback],
+                },
+            )
         except Exception as e:
             raise e
         finally:
