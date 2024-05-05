@@ -10,6 +10,7 @@ from ..chat.agent import AgentManager
 from ..chat.callback import ChatCallback
 from ..chat.manager import ChatManager
 from ..chat.tool import ToolManager
+from ..error import ChatBaseError, ChatResponseError
 from .base import BaseMessageHandler
 
 if TYPE_CHECKING:
@@ -28,7 +29,6 @@ class ChatHandler(BaseMessageHandler):
         self.response_txt = self.base_response_txt
         self.old_response_txt = self.response_txt
         self.tool_handler = ToolManager(bot, self.thread)
-        self.chat_manager = ChatManager(bot, self.thread)
         self.agent_manager = AgentManager(bot, message)
         self.chat_callback = ChatCallback(bot, message)
 
@@ -37,9 +37,6 @@ class ChatHandler(BaseMessageHandler):
             return
         try:
             self.db.lock(self.guild.name, self.key)
-            # await self.handle_file()
-            # await self.handle_content()
-            # await self.chat_manager.run_task()
             agent = self.agent_manager.get_agent()
             await agent.ainvoke(
                 {"input": self.message.content},
@@ -48,8 +45,10 @@ class ChatHandler(BaseMessageHandler):
                     "callbacks": [self.chat_callback],
                 },
             )
+        except openai.APIError as e:
+            raise ChatResponseError(e.message)
         except Exception as e:
-            raise e
+            raise ChatBaseError(str(e))
         finally:
             self.db.unlock(self.guild.name, self.key)
 

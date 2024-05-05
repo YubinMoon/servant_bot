@@ -12,7 +12,12 @@ class ChatBaseError(Exception):
         return f"{self.__class__.__name__}: {self.message}"
 
     def get_embed(self):
-        raise NotImplementedError
+        embed = Embed(
+            title="에러가 발생했어요.",
+            description=f"```\n{self.message}\n```",
+            color=color.ERROR,
+        )
+        return embed
 
 
 class UnknownCommandError(ChatBaseError):
@@ -35,7 +40,7 @@ class ChatResponseError(ChatBaseError):
     def get_embed(self):
         embed = Embed(
             title="챗봇 응답에 문제가 있어요.",
-            description=f"detail\n```\n{self.message}\n```",
+            description=f"```\n{self.message}\n```",
             color=color.ERROR,
         )
         return embed
@@ -74,7 +79,7 @@ class ChannelCreateError(ChatBaseError):
     def get_embed(self):
         embed = Embed(
             title="채널 생성에 실패했어요.",
-            description=f"detail\n```\n{self.message}\n```",
+            description=f"```\n{self.message}\n```",
             color=color.ERROR,
         )
         return embed
