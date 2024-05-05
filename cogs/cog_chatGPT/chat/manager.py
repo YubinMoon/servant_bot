@@ -14,7 +14,7 @@ from utils.logger import get_logger, send_to_owner
 
 from ..error import ChatResponseError, ContentFilterError
 from .model import ChatResponse
-from .tool import ToolHandler
+from .tool import ToolManager
 
 if TYPE_CHECKING:
     from discord.abc import MessageableChannel
@@ -35,7 +35,7 @@ class ChatManager:
         self.channel = channel
         self.guild = channel.guild
         self.logger = get_logger("chat_manager")
-        self.tool_handler = ToolHandler(bot, channel)
+        self.tool_handler = ToolManager(bot, channel)
         self.key: str = generate_key(str(channel.id), 6)
         self.max_token: int = bot.config["token_threshold"]
         self.chat_model: str = bot.config["main_chat_model"]
