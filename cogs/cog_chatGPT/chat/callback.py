@@ -87,10 +87,7 @@ class CalcTokenCallback(AsyncCallbackHandler):
     async def on_tool_start(
         self, serialized: Dict[str, Any], input_str: str, **kwargs: Any
     ) -> Any:
-        print(serialized)
-        print(serialized["name"])
         if serialized["name"] == "dall-e_Image_Generator":
-            print("call: dall-e_Image_Generator")
             self.tool_tokens += 4_000
 
 

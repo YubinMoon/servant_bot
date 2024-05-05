@@ -80,7 +80,9 @@ class AgentManager:
 
     def get_agent(self, tools):
         agent = create_openai_tools_agent(self.llm, tools, prompt)
-        agent_executor = AgentExecutor(agent=agent, tools=tools)
+        agent_executor = AgentExecutor(
+            agent=agent, tools=tools, handle_parsing_errors=True
+        )
         return RunnableWithMessageHistory(
             agent_executor,
             self.create_session_factory(),
