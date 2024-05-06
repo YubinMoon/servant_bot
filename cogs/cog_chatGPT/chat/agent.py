@@ -26,7 +26,11 @@ if TYPE_CHECKING:
 
 prompt = ChatPromptTemplate.from_messages(
     [
-        ("system", "You are very powerful assistant."),
+        (
+            "system",
+            "You are very powerful assistant."
+            "If you need more information, you can ask to user, or find contents from memory tool",
+        ),
         MessagesPlaceholder(variable_name="history"),
         ("human", "{input}"),
         MessagesPlaceholder(variable_name="agent_scratchpad"),
@@ -41,7 +45,7 @@ class AgentManager:
         self.channel = message.channel
         self.key: str = generate_key(str(self.channel.id), 6)
         self.logger = get_logger("agent_manager")
-        self.llm = ChatOpenAI(model="gpt-4-turbo", streaming=True)
+        self.llm = ChatOpenAI(model=bot.config["main_chat_model"], streaming=True)
         self.memory = memory
 
     def get_agent(self, tools):
