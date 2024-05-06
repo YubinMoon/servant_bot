@@ -27,3 +27,8 @@ def num_tokens_from_messages(messages: list[dict[str, str | dict]]):
                 num_tokens += tokens_per_name
     num_tokens += 3  # every reply is primed with <|start|>assistant<|message|>
     return num_tokens
+
+
+def token_length(string: str) -> int:
+    enc = tiktoken.encoding_for_model("gpt-3.5-turbo")
+    return len(enc.encode(string))

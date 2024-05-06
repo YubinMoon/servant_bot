@@ -1,7 +1,9 @@
 import base64
 import io
+import json
 import random
-from typing import TYPE_CHECKING, Optional, Type
+import re
+from typing import TYPE_CHECKING, List, Optional, Type
 
 import discord
 import magic
@@ -9,26 +11,38 @@ import openai
 import requests
 from discord import Thread
 from discord.ext.commands import Bot
+from langchain_community.document_loaders import WebBaseLoader
 from langchain_community.document_loaders.parsers.generic import MimeTypeBasedParser
 from langchain_community.document_loaders.parsers.html import BS4HTMLParser
 from langchain_community.document_loaders.parsers.pdf import PDFMinerParser
 from langchain_community.document_loaders.parsers.txt import TextParser
 from langchain_community.tools import BaseTool, WikipediaQueryRun
 from langchain_community.utilities import WikipediaAPIWrapper
+from langchain_community.vectorstores import FAISS
 from langchain_core.callbacks.manager import CallbackManagerForToolRun
 from langchain_core.document_loaders.blob_loaders import Blob
+from langchain_core.documents.base import Document
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import Runnable
 from langchain_core.tools import Tool, tool
 from langchain_google_community import GoogleSearchAPIWrapper
-from langchain_openai import ChatOpenAI
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_text_splitters import (
+    CharacterTextSplitter,
+    RecursiveCharacterTextSplitter,
+)
 from pydantic import BaseModel, Field
 
+from utils.chat import token_length
 from utils.logger import get_logger
+
+from .memory import MemoryManager
 
 if TYPE_CHECKING:
     from langchain_community.document_loaders.base import BaseBlobParser
+
+embeddings = OpenAIEmbeddings()
 
 
 class ImageInput(BaseModel):
@@ -99,52 +113,70 @@ class ImageGenerator(BaseTool):
         )
 
 
-@tool
-def where_cat_is_hiding() -> str:
-    """Where is the cat hiding right now?"""
-    return random.choice(["under the bed", "on the shelf"])
-
-
-@tool
-def get_items(place: str) -> str:
-    """Use this tool to look up which items are in the given place."""
-    if "bed" in place:  # For under the bed
-        return "socks, shoes and dust bunnies"
-    if "shelf" in place:  # For 'shelf'
-        return "books, penciles and pictures"
-    else:  # if the agent decides to ask about a different place
-        return "cat snacks"
-
-
-@tool
-def web_request(url: str) -> str:
-    """Use this tool to make a web request to the given URL."""
-    response = requests.get(url)
-    data = response.content
-    HANDLERS: "dict[str,BaseBlobParser]" = {
-        "application/pdf": PDFMinerParser(),
-        "text/plain": TextParser(),
-        "text/html": BS4HTMLParser(),
-    }
-
-    # Instantiate a mimetype based parser with the given parsers
-    MIMETYPE_BASED_PARSER = MimeTypeBasedParser(
-        handlers=HANDLERS,
-        fallback_parser=None,
+class WebInput(BaseModel):
+    urls: list[str] = Field(
+        description="A list of URLs to fetch the contents of a web page."
     )
 
-    mime = magic.Magic(mime=True)
-    mime_type = mime.from_buffer(data)
 
-    # A blob represents binary data by either reference (path on file system)
-    # or value (bytes in memory).
-    blob = Blob.from_data(
-        data=data,
-        mime_type=mime_type,
+class WebFetch(BaseTool):
+    name = "web_fetch"
+    description = "Useful to fetches the contents of a web page. The full contents will be saved in memory. Short contents description are return. You need to retrieve the contents to retrieve_from_memory tool for more information."
+    args_schema: Type[BaseModel] = WebInput
+    memory_manager: MemoryManager = Field(exclude=True)
+
+    async def _run(
+        self,
+        urls: list[str],
+        run_manager: Optional[CallbackManagerForToolRun] = None,
+    ):
+        rds = self.memory_manager.get_rds("web")
+        docs = self.memory_manager.load_docs_from_web(urls)
+        rds.add_documents(docs)
+        metadata = [json.dumps(doc.metadata) for doc in docs]
+        return set(metadata)
+
+    async def _arun(
+        self,
+        urls: list[str],
+        run_manager: Optional[CallbackManagerForToolRun] = None,
+    ):
+        rds = self.memory_manager.get_rds("web")
+        docs = self.memory_manager.load_docs_from_web(urls)
+        rds.add_documents(docs)
+        metadata = [json.dumps(doc.metadata) for doc in docs]
+        return set(metadata)
+
+
+class SearchInput(BaseModel):
+    query: str = Field(
+        description="A search query to search the web memory. This should not url."
     )
 
-    parser = HANDLERS[mime_type]
-    documents = parser.parse(blob=blob)
+
+class MemorySearch(BaseTool):
+    name = "retrieve_from_memory"
+    description = "Retrieve at memory contains every infomation you needed. When you need information just use this tool."
+    args_schema: Type[BaseModel] = SearchInput
+    memory_manager: MemoryManager = Field(exclude=True)
+
+    async def _run(
+        self,
+        query: str,
+        run_manager: Optional[CallbackManagerForToolRun] = None,
+    ):
+        retriever = self.memory_manager.create_web_retriever()
+        docs = retriever.invoke(query)
+        return self.memory_manager.format_docs_to_string(docs)
+
+    async def _arun(
+        self,
+        query: str,
+        run_manager: Optional[CallbackManagerForToolRun] = None,
+    ):
+        retriever = self.memory_manager.create_web_retriever()
+        docs = retriever.invoke(query)
+        return self.memory_manager.format_docs_to_string(docs)
 
 
 api_wrapper = WikipediaAPIWrapper(
@@ -173,14 +205,14 @@ google_search_tool = Tool(
 
 
 class ToolManager:
-    def __init__(self, bot: Bot, channel: Thread):
+    def __init__(self, bot: Bot, channel: Thread, memory: "MemoryManager"):
         self.bot = bot
         self.logger = get_logger("tool_manager")
         self.channel = channel
         self.all_tools = [
             ImageGenerator(channel=channel),
-            get_items,
-            where_cat_is_hiding,
+            WebFetch(memory_manager=memory),
+            MemorySearch(memory_manager=memory),
             wiki_tool,
             google_search_tool,
         ]
