@@ -113,6 +113,7 @@ class ChatCallback(AsyncCallbackHandler):
         messages: List[List[BaseMessage]],
         **kwargs: Any,
     ) -> Any:
+        print(messages[0][0])
         if self.chat_message is None:
             self.chat_message = await self.channel.send(self.base_response_txt)
 

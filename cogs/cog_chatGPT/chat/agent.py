@@ -1,14 +1,17 @@
 import json
 import os
+from operator import itemgetter
 from typing import TYPE_CHECKING, Optional
 
 from langchain.agents.agent import AgentExecutor
 from langchain.agents.openai_tools.base import create_openai_tools_agent
 from langchain_community.chat_message_histories import RedisChatMessageHistory
+from langchain_community.vectorstores.redis import Redis
 from langchain_core.messages import BaseMessage, message_to_dict
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.runnables import Runnable, RunnableLambda, RunnablePassthrough
 from langchain_core.runnables.history import RunnableWithMessageHistory
-from langchain_openai import ChatOpenAI
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
 from database import ChatDataManager
 from utils.hash import generate_key
@@ -19,17 +22,31 @@ if TYPE_CHECKING:
 
     from bot import ServantBot
 
-
 prompt = ChatPromptTemplate.from_messages(
     [
         (
             "system",
-            "You are very powerful assistant.",
+            "You are very powerful assistant."
+            "Answer the question based only on the following context:"
+            "{context}",
         ),
         MessagesPlaceholder(variable_name="history"),
         ("human", "{input}"),
         MessagesPlaceholder(variable_name="agent_scratchpad"),
     ]
+)
+embeddings = OpenAIEmbeddings()
+
+
+redis_host = os.getenv("REDIS_HOST", "localhost")
+redis_port = os.getenv("REDIS_PORT", 6380)
+
+redis_url = f"redis://{redis_host}:{redis_port}"
+
+rds = Redis(redis_url, "users", embeddings, key_prefix="test")
+
+retriever = rds.as_retriever(
+    search_type="mmr", search_kwargs={"k": 5, "lambda_mult": 0.15}
 )
 
 
@@ -80,12 +97,30 @@ class AgentManager:
 
     def get_agent(self, tools):
         agent = create_openai_tools_agent(self.llm, tools, prompt)
+        agent = (
+            RunnablePassthrough().assign(context=itemgetter("input") | retriever)
+            | agent
+        )
         agent_executor = AgentExecutor(
-            agent=agent, tools=tools, handle_parsing_errors=True
+            agent=agent, tools=tools, handle_parsing_errors=True, verbose=True
         )
         return RunnableWithMessageHistory(
             agent_executor,
             self.create_session_factory(),
             input_messages_key="input",
             history_messages_key="history",
+        )
+
+    async def get_retriever(self, data):
+        input_data = data["input"]
+        result = await retriever.ainvoke(input_data)
+        data["context"] = await self.format_docs(result)
+        return data
+
+    async def format_docs(self, docs):
+        result = []
+        for d in docs:
+            result.append(f"{d.page_content}\n{d.metadata}")
+        return "\n\n".join(
+            [f"meta_data: {d.metadata}\ncontents: {d.page_content}" for d in docs]
         )
