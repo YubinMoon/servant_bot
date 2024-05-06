@@ -94,7 +94,7 @@ class MemoryManager:
 
     def create_web_retriever(self):
         rds = self.get_rds("web")
-        retriever = rds.as_retriever(search_kwargs={"k": 7, "distance_threshold": 0.25})
+        retriever = rds.as_retriever(search_kwargs={"k": 2, "distance_threshold": 0.2})
         return retriever
 
     def load_dummy_docs(self):

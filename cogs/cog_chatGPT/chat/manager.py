@@ -46,13 +46,13 @@ class UserTokenManager:
 
         new_data = usage.copy()
 
-        new_data["prompt_tokens"] += int(data.get("prompt_tokens", 0))
-        new_data["completion_tokens"] += int(data.get("completion_tokens", 0))
-        new_data["tool_tokens"] += int(data.get("tool_tokens", 0))
-        new_data["total_tokens"] += int(data.get("total_tokens", 0))
-        new_data["prompt_cost"] += int(data.get("prompt_cost", 0))
-        new_data["completion_cost"] += int(data.get("completion_cost", 0))
-        new_data["tool_cost"] += int(data.get("tool_cost", 0))
-        new_data["total_cost"] += int(data.get("total_cost", 0))
+        new_data["prompt_tokens"] += float(data.get("prompt_tokens", 0))
+        new_data["completion_tokens"] += float(data.get("completion_tokens", 0))
+        new_data["tool_tokens"] += float(data.get("tool_tokens", 0))
+        new_data["total_tokens"] += float(data.get("total_tokens", 0))
+        new_data["prompt_cost"] += float(data.get("prompt_cost", 0))
+        new_data["completion_cost"] += float(data.get("completion_cost", 0))
+        new_data["tool_cost"] += float(data.get("tool_cost", 0))
+        new_data["total_cost"] += float(data.get("total_cost", 0))
 
         self.db.set_used_tokens(model, new_data)

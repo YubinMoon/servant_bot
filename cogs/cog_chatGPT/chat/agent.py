@@ -29,7 +29,10 @@ prompt = ChatPromptTemplate.from_messages(
         (
             "system",
             "You are very powerful assistant."
-            "If you need more information, you can ask to user, or find contents from memory tool",
+            "If you need more information, you can ask to user, or find contents from memory tool"
+            "Below is a part of Memory related to the question."
+            "You can use tools to find more information."
+            "CONTEXT: {context}",
         ),
         MessagesPlaceholder(variable_name="history"),
         ("human", "{input}"),
@@ -51,6 +54,14 @@ class AgentManager:
     def get_agent(self, tools):
         retriever = self.memory.create_web_retriever()
         agent = create_openai_tools_agent(self.llm, tools, prompt)
+        agent = (
+            RunnablePassthrough().assign(
+                context=itemgetter("input")
+                | retriever
+                | self.memory.format_docs_to_string
+            )
+            | agent
+        )
         agent_executor = AgentExecutor(
             agent=agent, tools=tools, handle_parsing_errors=True, verbose=True
         )

@@ -62,4 +62,4 @@ class ChatDataManager(DatabaseManager):
         result = self.database.get(f"{prefix_key}:schema")
         if result is None:
             return None
-        return json.loads(result.decode("utf-8"))
+        return json.loads(result)
