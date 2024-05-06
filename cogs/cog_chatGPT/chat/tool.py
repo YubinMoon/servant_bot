@@ -1,24 +1,34 @@
 import base64
 import io
 import random
-from typing import Optional, Type
+from typing import TYPE_CHECKING, Optional, Type
 
 import discord
+import magic
 import openai
+import requests
 from discord import Thread
 from discord.ext.commands import Bot
-from langchain_community.tools import BaseTool
+from langchain_community.document_loaders.parsers.generic import MimeTypeBasedParser
+from langchain_community.document_loaders.parsers.html import BS4HTMLParser
+from langchain_community.document_loaders.parsers.pdf import PDFMinerParser
+from langchain_community.document_loaders.parsers.txt import TextParser
+from langchain_community.tools import BaseTool, WikipediaQueryRun
+from langchain_community.utilities import WikipediaAPIWrapper
 from langchain_core.callbacks.manager import CallbackManagerForToolRun
+from langchain_core.document_loaders.blob_loaders import Blob
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import Runnable
-from langchain_core.tools import tool
+from langchain_core.tools import Tool, tool
+from langchain_google_community import GoogleSearchAPIWrapper
 from langchain_openai import ChatOpenAI
-
-# Import things that are needed generically
 from pydantic import BaseModel, Field
 
 from utils.logger import get_logger
+
+if TYPE_CHECKING:
+    from langchain_community.document_loaders.base import BaseBlobParser
 
 
 class ImageInput(BaseModel):
@@ -106,6 +116,62 @@ def get_items(place: str) -> str:
         return "cat snacks"
 
 
+@tool
+def web_request(url: str) -> str:
+    """Use this tool to make a web request to the given URL."""
+    response = requests.get(url)
+    data = response.content
+    HANDLERS: "dict[str,BaseBlobParser]" = {
+        "application/pdf": PDFMinerParser(),
+        "text/plain": TextParser(),
+        "text/html": BS4HTMLParser(),
+    }
+
+    # Instantiate a mimetype based parser with the given parsers
+    MIMETYPE_BASED_PARSER = MimeTypeBasedParser(
+        handlers=HANDLERS,
+        fallback_parser=None,
+    )
+
+    mime = magic.Magic(mime=True)
+    mime_type = mime.from_buffer(data)
+
+    # A blob represents binary data by either reference (path on file system)
+    # or value (bytes in memory).
+    blob = Blob.from_data(
+        data=data,
+        mime_type=mime_type,
+    )
+
+    parser = HANDLERS[mime_type]
+    documents = parser.parse(blob=blob)
+
+
+api_wrapper = WikipediaAPIWrapper(
+    top_k_results=3, doc_content_chars_max=1500, lang="ko"
+)
+wiki_tool = WikipediaQueryRun(
+    api_wrapper=api_wrapper,
+    description="A wrapper around Wikipedia. "
+    "Useful for when you need to answer general questions about "
+    "people, places, companies, facts, historical events, or other subjects. "
+    "Input should be a search query.",
+)
+
+google_search = GoogleSearchAPIWrapper()
+
+
+def top5_results(query):
+    return google_search.results(query, 5)
+
+
+google_search_tool = Tool(
+    name="Google_Search_Snippets",
+    description="Search Google for recent results.",
+    func=top5_results,
+)
+
+
 class ToolManager:
     def __init__(self, bot: Bot, channel: Thread):
         self.bot = bot
@@ -115,6 +181,8 @@ class ToolManager:
             ImageGenerator(channel=channel),
             get_items,
             where_cat_is_hiding,
+            wiki_tool,
+            google_search_tool,
         ]
 
     def get_tools(self):
