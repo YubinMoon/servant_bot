@@ -10,6 +10,7 @@ from utils.file import txt_files_from_message
 from ..chat.agent import AgentManager
 from ..chat.callback import CalcTokenCallback, ChatCallback
 from ..chat.manager import UserTokenManager
+from ..chat.memory import MemoryManager
 from ..chat.tool import ToolManager
 from ..error import ChatBaseError, ChatResponseError
 from .base import BaseMessageHandler
@@ -32,8 +33,9 @@ class ChatHandler(BaseMessageHandler):
         self.chat_callback = ChatCallback(bot, message=message)
         self.token_callback = CalcTokenCallback()
         self.user_token_manager = UserTokenManager(bot, message.author)
-        self.tool_manager = ToolManager(bot, self.thread)
-        self.agent_manager = AgentManager(bot, message)
+        memory_manager = MemoryManager(bot, message)
+        self.agent_manager = AgentManager(bot, message, memory_manager)
+        self.tool_manager = ToolManager(bot, self.thread, memory_manager)
 
     async def action(self):
         if await self.is_lock():

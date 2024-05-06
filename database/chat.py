@@ -1,4 +1,8 @@
+import json
+from ast import Bytes
 from typing import TYPE_CHECKING
+
+from numpy import byte
 
 from .base import DatabaseManager
 
@@ -46,3 +50,16 @@ class ChatDataManager(DatabaseManager):
         self.database.json().arrappend(
             f"chat:{guild_name}:{key}:messages", "$", message
         )
+
+    def memory_exists(self, key: str) -> bool:
+        num_of_keys = self.database.keys(f"{key}")
+        return len(num_of_keys) > 0
+
+    def set_redis_schema(self, prefix_key: str, schema: dict) -> None:
+        self.database.set(f"{prefix_key}:schema", json.dumps(schema))
+
+    def get_redis_schema(self, prefix_key: str) -> dict | None:
+        result = self.database.get(f"{prefix_key}:schema")
+        if result is None:
+            return None
+        return json.loads(result.decode("utf-8"))
