@@ -5,10 +5,10 @@ import sys
 import traceback
 
 import discord
-import redis
 from discord.ext import commands, tasks
 from discord.ext.commands import Context
 
+from database import get_redis
 from utils.logger import get_logger
 
 
@@ -23,13 +23,8 @@ class ServantBot(commands.Bot):
         self.config = config
 
     async def load_db(self) -> None:
-        self.database = redis.Redis(
-            host=os.getenv("REDIS_HOST", "localhost"),
-            port=int(os.getenv("REDIS_PORT", 6379)),
-            decode_responses=True,
-        )
         try:
-            self.database.ping()
+            self.database = await get_redis()
         except:
             self.logger.error("Failed to connect to the Redis server")
             self.logger.debug(traceback.format_exc())
