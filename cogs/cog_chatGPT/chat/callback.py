@@ -58,15 +58,14 @@ class CalcTokenCallback(AsyncCallbackHandler):
             "completion_cost": self.completion_cost,
             "tool_cost": self.tool_cost,
             "total_cost": self.total_cost,
-            "chat_model": self.chat_model,
         }
 
     async def on_llm_start(
         self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any
     ) -> None:
         """Count prompt token length."""
-        self.prompt_tokens += len(enc.encode(prompts[0]))
-        self.chat_model = serialized["kwargs"]["model"]
+        self.prompt_tokens = len(enc.encode(prompts[0]))
+        self.chat_model = serialized["kwargs"]["model_name"]
 
     async def on_llm_new_token(self, token: str, **kwargs):
         """Count output tokens."""
@@ -74,15 +73,18 @@ class CalcTokenCallback(AsyncCallbackHandler):
 
     async def on_llm_end(self, response, **kwargs: Any) -> None:
         """Calculate total token costs."""
-        model_name = standardize_model_name("gpt-3.5-turbo")
-        self.prompt_cost = get_openai_token_cost_for_model(
-            model_name, self.prompt_tokens
+        self.prompt_cost += get_openai_token_cost_for_model(
+            self.chat_model, self.prompt_tokens
         )
-        self.completion_cost = get_openai_token_cost_for_model(
-            model_name, self.completion_tokens, is_completion=True
+        self.completion_cost += get_openai_token_cost_for_model(
+            self.chat_model, self.completion_tokens, is_completion=True
         )
-        self.tool_cost = 0.00002 * self.tool_tokens
-        self.total_cost = self.prompt_cost + self.total_cost
+        self.tool_cost += 0.00002 * self.tool_tokens
+        self.total_cost = self.prompt_cost + self.completion_cost + self.tool_cost
+
+        self.prompt_tokens = 0
+        self.completion_tokens = 0
+        self.tool_tokens = 0
 
     async def on_tool_start(
         self, serialized: Dict[str, Any], input_str: str, **kwargs: Any
@@ -95,8 +97,7 @@ class ChatCallback(AsyncCallbackHandler):
     base_response_txt = "생각 중..."
     cooltime = 1.5
 
-    def __init__(self, bot: "ServantBot", message: "Message"):
-        self.bot = bot
+    def __init__(self, message: "Message"):
         self.guild = message.guild
         self.channel = message.channel
         self.key: str = generate_key(str(self.channel.id), 6)
@@ -113,7 +114,6 @@ class ChatCallback(AsyncCallbackHandler):
         messages: List[List[BaseMessage]],
         **kwargs: Any,
     ) -> Any:
-        print(messages[0][0])
         if self.chat_message is None:
             self.chat_message = await self.channel.send(self.base_response_txt)
 
