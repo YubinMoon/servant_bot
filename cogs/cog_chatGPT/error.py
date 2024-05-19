@@ -83,3 +83,16 @@ class ChannelCreateError(ChatBaseError):
             color=color.ERROR,
         )
         return embed
+
+
+class NoAITypeError(ChatBaseError):
+    def __init__(self, message: str):
+        super().__init__(message)
+
+    def get_embed(self):
+        embed = Embed(
+            title="AI 모델을 선택하지 않았어요.",
+            description=f"AI 모델을 선택해 주세요.",
+            color=color.ERROR,
+        )
+        return embed

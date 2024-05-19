@@ -1,4 +1,5 @@
 import json
+import re
 
 import tiktoken
 
@@ -32,3 +33,12 @@ def num_tokens_from_messages(messages: list[dict[str, str | dict]]):
 def token_length(string: str) -> int:
     enc = tiktoken.encoding_for_model("gpt-3.5-turbo")
     return len(enc.encode(string))
+
+
+def find_urls(text: str) -> list[str]:
+    url_regex = r"http[s]?://(?:[a-zA-Z]|[0-9]|[$\-@\.&+:/?=]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
+
+    reg = re.compile(url_regex)
+
+    res = reg.findall(text)
+    return res

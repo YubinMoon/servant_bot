@@ -5,6 +5,7 @@ from discord import ChannelType
 from utils.hash import generate_key
 
 from ..error import ChannelCreateError
+from ..view import ModelSelectView
 from .base import BaseCommandHandler
 
 if TYPE_CHECKING:
@@ -22,23 +23,20 @@ class NewChatHandler(BaseCommandHandler):
 
     async def action(self):
         await self.check_channel_type()
-        new_msg: Message = await self.context.send(f"새 쓰래드를 시작할게요.")
+        new_msg = await self.context.send(f"새 쓰래드를 시작할게요.")
         thread = await new_msg.create_thread(
             name="chat with GPT", auto_archive_duration=60, reason="new chat"
         )
         key = generate_key(str(thread.id), 6)
 
         await new_msg.edit(content=f"새 쓰래드를 시작했어요. (key={key})")
-        await self.send_welcome_message(thread)
+        await thread.send(self.get_welcome_text())
+        await thread.send(content="모델을 선택해주세요.", view=ModelSelectView())
         self.logger.info(f"new chat thread created by {self.author.name}, key={key}")
 
     async def check_channel_type(self) -> None:
         if self.context.channel.type is not ChannelType.text:
             raise ChannelCreateError(f"The channel is not a text channel.")
-
-    async def send_welcome_message(self, thread: "Thread") -> None:
-        welcome_text = self.get_welcome_text()
-        await thread.send(welcome_text)
 
     def get_welcome_text(self) -> str:
         text = [

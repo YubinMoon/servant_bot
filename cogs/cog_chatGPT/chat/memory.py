@@ -1,7 +1,7 @@
 import json
 import os
 import re
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from langchain.agents.openai_tools.base import create_openai_tools_agent
 from langchain_community.chat_message_histories import RedisChatMessageHistory
@@ -20,11 +20,11 @@ from utils.hash import generate_key
 from utils.logger import get_logger
 
 if TYPE_CHECKING:
-    from discord import Message
+    from discord import Message, Thread
 
     from bot import ServantBot
 
-embeddings = OpenAIEmbeddings()
+embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
 
 redis_host = os.getenv("REDIS_HOST", "localhost")
 redis_port = os.getenv("REDIS_PORT", 6380)
@@ -127,3 +127,33 @@ class MemoryManager:
         return "\n\n".join(
             [f"meta data: {doc.metadata}\ncontent: {doc.page_content}" for doc in docs]
         )
+
+
+def _get_rds(index_name: str, r_key: str, schema: dict[str, Any]):
+    redis = Redis(
+        REDIS_URL,
+        index_name,
+        embeddings,
+        schema,
+        key_prefix=r_key,
+    )
+    redis._create_index_if_not_exist(3072)
+    return redis
+
+
+def get_chat_history_memory(thread: "Thread"):
+    key = generate_key(str(thread.id), 6)
+    guild_name = thread.guild.name
+    return MyChatMessageHistory(
+        session_id=key, url=REDIS_URL, key_prefix=f"chat:{guild_name}:{key}:"
+    )
+
+
+def get_memory(thread: "Thread", type: str = "docs"):
+    key = generate_key(str(thread.id), 6)
+    rds = _get_rds(
+        key,
+        f"chat:{thread.guild.name}:{key}:{type}",
+        {"text": [{"name": "source"}], "numeric": [{"name": "page"}]},
+    )
+    return rds

@@ -12,3 +12,4 @@ langchain-google-community
 python-magic
 lxml
 redisvl 
+pypdf
