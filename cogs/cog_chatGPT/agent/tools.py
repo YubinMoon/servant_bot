@@ -1,9 +1,28 @@
-from langchain_community.tools import WikipediaQueryRun
-from langchain_community.utilities import WikipediaAPIWrapper
-from langchain_core.tools import tool
-
-wikipedia = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())
+from langchain_community.tools.tavily_search import TavilySearchResults
+from langchain_core.tools import BaseTool
 
 
-def get_tools():
-    return [wikipedia]
+class ToolBase:
+    name: str
+    description: str
+    tool: BaseTool
+
+
+class TavilySearch(ToolBase):
+    name: str = "tavily 검색"
+    description: str = "AI용 온라인 검색 도구"
+    tool = TavilySearchResults()
+
+
+def get_all_tools() -> list[ToolBase]:
+    return [
+        TavilySearch(),
+    ]
+
+
+def get_tools(tools_name: list[str]):
+    tools = []
+    for tool in get_all_tools():
+        if tool.name in tools_name:
+            tools.append(tool.tool)
+    return tools

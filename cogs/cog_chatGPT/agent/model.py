@@ -5,6 +5,7 @@ from langchain_core.callbacks.base import AsyncCallbackHandler
 from .autoGPT import AutoGPTAgent
 from .base import BaseAgent
 from .basic import Basic, BasicLong
+from .translator import Translator
 
 if TYPE_CHECKING:
     from discord import Message
@@ -34,18 +35,18 @@ class AutoGPTTemplate(BaseTemplate):
     agent = Basic
 
 
-class TranslationTemplate(BaseTemplate):
-    name: str = "translation"
+class TranslatorTemplate(BaseTemplate):
+    name: str = "translator"
     description: str = "번역기 템플릿"
-    agent = Basic
+    agent = Translator
 
 
 def get_templates() -> list[BaseTemplate]:
     return [
         BasicTemplate(),
         BasicLongTemplate(),
-        AutoGPTTemplate(),
-        TranslationTemplate(),
+        # AutoGPTTemplate(),
+        TranslatorTemplate(),
     ]
 
 

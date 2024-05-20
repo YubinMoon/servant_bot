@@ -98,3 +98,7 @@ class BasicPrompt(BaseChatPromptTemplate, BaseModel):
             f"You can refer to these documents "
             f"from your memory:\n{relevant_memory}\n\n"
         )
+
+
+class TranslatorPrompt(BaseChatPromptTemplate, BaseModel):
+    pass
