@@ -42,14 +42,14 @@ class BaseMessageHandler(BaseHandler):
         super().__init__(bot)
         if message.guild is None:
             raise ValueError("Guild is not found.")
-
+        self.author = message.author
         self.message = message
-        self.thread = message.channel
+        self.channel = message.channel
         self.guild = message.guild
-        self.key: str = generate_key(str(self.thread.id), 6)
+        self.key: str = generate_key(str(self.channel.id), 6)
 
     async def send_error_message(self, embed: "Embed") -> None:
-        await self.thread.send(embed=embed, silent=True)
+        await self.channel.send(embed=embed, silent=True)
 
 
 class BaseCommandHandler(BaseHandler):

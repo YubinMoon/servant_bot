@@ -25,7 +25,7 @@ class BaseCommand:
         self.bot = handler.bot
         self.db = handler.db
         self.guild = handler.guild
-        self.thread = handler.thread
+        self.thread = handler.channel
         self.message = handler.message
         self.key = handler.key
 

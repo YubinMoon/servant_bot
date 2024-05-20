@@ -18,9 +18,8 @@ from utils.logger import get_logger
 if TYPE_CHECKING:
     from discord import Embed, Message
 
-    from bot import ServantBot
 
-enc = tiktoken.encoding_for_model("gpt-3.5-turbo")
+enc = tiktoken.get_encoding("cl100k_base")
 
 
 class CalcTokenCallback(AsyncCallbackHandler):
@@ -64,7 +63,7 @@ class CalcTokenCallback(AsyncCallbackHandler):
         self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any
     ) -> None:
         """Count prompt token length."""
-        self.prompt_tokens = len(enc.encode(prompts[0]))
+        self.prompt_tokens += len(enc.encode(prompts[0]))
         self.chat_model = serialized["kwargs"]["model_name"]
 
     async def on_llm_new_token(self, token: str, **kwargs):
@@ -73,18 +72,14 @@ class CalcTokenCallback(AsyncCallbackHandler):
 
     async def on_llm_end(self, response, **kwargs: Any) -> None:
         """Calculate total token costs."""
-        self.prompt_cost += get_openai_token_cost_for_model(
+        self.prompt_cost = get_openai_token_cost_for_model(
             self.chat_model, self.prompt_tokens
         )
-        self.completion_cost += get_openai_token_cost_for_model(
+        self.completion_cost = get_openai_token_cost_for_model(
             self.chat_model, self.completion_tokens, is_completion=True
         )
-        self.tool_cost += 0.00002 * self.tool_tokens
+        self.tool_cost = 0.00002 * self.tool_tokens
         self.total_cost = self.prompt_cost + self.completion_cost + self.tool_cost
-
-        self.prompt_tokens = 0
-        self.completion_tokens = 0
-        self.tool_tokens = 0
 
     async def on_tool_start(
         self, serialized: Dict[str, Any], input_str: str, **kwargs: Any
