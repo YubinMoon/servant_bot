@@ -2,7 +2,7 @@ import json
 from sys import prefix
 from typing import TYPE_CHECKING
 
-from .base import DatabaseManager
+from .base import DatabaseManager, get_redis
 
 if TYPE_CHECKING:
     from discord import User
@@ -31,3 +31,13 @@ class UserDataManager(DatabaseManager):
 
     def set_used_tokens(self, model: str, data: dict[str, int]) -> None:
         self.database.hmset(self._get_id(["token", f"used-{model}"]), data)
+
+
+async def get_used_tokens(user_name: str):
+    db = await get_redis()
+    db.hgetall(f"user:{user_name}:token")
+
+
+async def set_used_tokens(user_name: str, data: dict[str, int]):
+    db = await get_redis()
+    db.hmset(f"user:{user_name}:token", data)

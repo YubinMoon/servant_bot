@@ -7,6 +7,7 @@ from langchain.agents.format_scratchpad.openai_tools import (
 )
 from langchain.agents.output_parsers.openai_tools import OpenAIToolsAgentOutputParser
 from langchain_community.document_loaders import PyPDFLoader
+from langchain_core.callbacks.base import AsyncCallbackHandler
 from langchain_core.documents import Document
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
@@ -26,8 +27,13 @@ class Basic(BaseAgent):
     memory_docs_num = 4
     splitter_chunk_size = 600
 
-    def __init__(self, message: "Message", thread_info: dict):
-        super().__init__(message, thread_info)
+    def __init__(
+        self,
+        message: "Message",
+        thread_info: dict,
+        callbacks=list[AsyncCallbackHandler],
+    ):
+        super().__init__(message, thread_info, callbacks)
         self.tools = get_tools()
         self.token_counter = self.llm.get_num_tokens
         self.prompt = BasicPrompt(
@@ -46,6 +52,7 @@ class Basic(BaseAgent):
 
     async def _run(self):
         # TODO  token check 추가 필요
+
         user_messages = await self.get_user_messages()
 
         agent_executor = await self.get_agent_executor()
@@ -54,7 +61,7 @@ class Basic(BaseAgent):
                 "user_messages": user_messages,
             },
             config={
-                "callbacks": self._get_callbacks(),
+                "callbacks": self.callbacks,
                 "configurable": {"session_id": self.key},
             },
         )

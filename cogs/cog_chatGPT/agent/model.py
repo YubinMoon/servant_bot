@@ -1,5 +1,7 @@
 from typing import TYPE_CHECKING, Type
 
+from langchain_core.callbacks.base import AsyncCallbackHandler
+
 from .autoGPT import AutoGPTAgent
 from .base import BaseAgent
 from .basic import Basic, BasicLong
@@ -48,9 +50,12 @@ def get_templates() -> list[BaseTemplate]:
 
 
 def get_template_agent(
-    name: str, message: "Message", thread_info: dict
+    name: str,
+    message: "Message",
+    thread_info: dict,
+    callbacks: list[AsyncCallbackHandler],
 ) -> BaseAgent | None:
     for template in get_templates():
         if template.name == name:
-            return template.agent(message, thread_info)
+            return template.agent(message, thread_info, callbacks)
     return None

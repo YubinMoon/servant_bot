@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import openai
 from discord import Embed
+from langchain_core.callbacks.base import AsyncCallbackHandler
 from langchain_openai import ChatOpenAI
 
 from database import chat as db
@@ -18,12 +19,18 @@ if TYPE_CHECKING:
 
 
 class BaseAgent:
-    def __init__(self, message: "Message", thread_info: dict):
+    def __init__(
+        self,
+        message: "Message",
+        thread_info: dict,
+        callbacks=list[AsyncCallbackHandler],
+    ):
         self.message = message
+        self.thread_info = thread_info
+        self.callbacks = callbacks
         self.thread = message.channel
         self.guild = message.guild
         self.key = generate_key(str(self.thread.id), 6)
-        self.thread_info = thread_info
         self.llm = self._get_llm(thread_info)
 
     async def run(self):
