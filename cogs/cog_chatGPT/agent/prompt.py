@@ -5,12 +5,11 @@ from typing import TYPE_CHECKING, Any, Callable, List, cast
 from langchain_core.documents import Document
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from langchain_core.prompts.chat import BaseChatPromptTemplate
-from langchain_experimental.pydantic_v1 import BaseModel
 
 from utils.logger import get_logger
 
 
-class BasicPrompt(BaseChatPromptTemplate, BaseModel):
+class BasicPrompt(BaseChatPromptTemplate):
     input_variables: List[str] = ["file_data", "messages", "user_messages"]
     token_counter: Callable[[str], int]
     send_token_limit: int = 4196
@@ -98,7 +97,3 @@ class BasicPrompt(BaseChatPromptTemplate, BaseModel):
             f"You can refer to these documents "
             f"from your memory:\n{relevant_memory}\n\n"
         )
-
-
-class TranslatorPrompt(BaseChatPromptTemplate, BaseModel):
-    pass
