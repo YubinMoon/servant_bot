@@ -47,10 +47,13 @@ class BaseAgent:
         finally:
             await db.unlock(self.guild.name, self.key)
 
+    async def _run(self):
+        raise NotImplementedError
+
     def _get_llm(self, thread_info: dict):
         self.model = get_model(thread_info["model"])
         if self.model.provider == "openai":
-            return ChatOpenAI(model=self.model.model)
+            return ChatOpenAI(model=self.model.model, streaming=True)
         else:
             raise ValueError(f"Invalid model '{self.model}'")
 

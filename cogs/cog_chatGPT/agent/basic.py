@@ -34,7 +34,7 @@ class Basic(BaseAgent):
         callbacks=list[AsyncCallbackHandler],
     ):
         super().__init__(message, thread_info, callbacks)
-        self.tools = get_tools()
+        self.tools = get_tools(thread_info["tools"])
         self.token_counter = self.llm.get_num_tokens
         self.prompt = BasicPrompt(
             token_counter=self.token_counter,
@@ -69,7 +69,10 @@ class Basic(BaseAgent):
 
     async def get_agent_executor(self):
         retriever = self.memory.as_retriever(search_kwargs={"k": self.memory_docs_num})
-        llm_with_tools = self.llm.bind_tools(self.tools)
+        if self.tools:
+            llm_with_tools = self.llm.bind_tools(self.tools)
+        else:
+            llm_with_tools = self.llm
         agent = (
             RunnablePassthrough()
             .assign(
@@ -101,7 +104,6 @@ class Basic(BaseAgent):
         self.message_history.add_message(AIMessage(content=output))
 
     async def load_messages(self, data):
-        print(data)
         return self.message_history.messages
 
     async def get_user_messages(self):
