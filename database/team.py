@@ -22,24 +22,24 @@ class TeamDataManager(DatabaseManager):
         self.database.set(f"team:{guild_name}:last", team_name)
 
     async def _delete_previous_team(self, guild_name: str, team_name: str) -> None:
-        keys: list[bytes] = self.database.keys(f"team:{guild_name}:{team_name}:*")
+        keys: list[str] = self.database.keys(f"team:{guild_name}:{team_name}:*")
         if keys:
             self.logger.warning(f"overwrite team: {team_name}")
             for key in keys:
-                self.database.delete(key.decode("utf-8"))
-                self.logger.debug(f"Deleted key: {key.decode('utf-8')}")
+                self.database.delete(key)
+                self.logger.debug(f"Deleted key: {key}")
 
     async def get_team_name(self, guild_name: str) -> str | None:
         value: bytes = self.database.get(f"team:{guild_name}:last")
         if value is None:
             return None
-        return value.decode("utf-8")
+        return value
 
     async def get_message_id(self, guild_name: str, team_name: str) -> int | None:
         value: bytes = self.database.get(f"team:{guild_name}:{team_name}:message")
         if value is None:
             return None
-        return int(value.decode("utf-8"))
+        return int(value)
 
     async def get_members(self, guild_name: str, team_name: str) -> list[int]:
         members_b: list[bytes] = self.database.lrange(
@@ -47,7 +47,7 @@ class TeamDataManager(DatabaseManager):
         )
         if members_b == []:
             return []
-        return [json.loads(member.decode("utf-8"))["id"] for member in members_b]
+        return [json.loads(member)["id"] for member in members_b]
 
     async def add_member(
         self, guild_name: str, team_name: str, member: "Member | User"
@@ -76,4 +76,4 @@ class TeamDataManager(DatabaseManager):
         )
         if history_b == []:
             return []
-        return [json.loads(history.decode("utf-8")) for history in history_b]
+        return [json.loads(history) for history in history_b]
