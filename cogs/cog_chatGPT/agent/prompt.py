@@ -28,19 +28,16 @@ class BasicPrompt(BaseChatPromptTemplate):
             content=f"The current time and date is {time.strftime('%c')}"
         )
         rest_tokens -= self.token_counter(
-            cast(str, base_prompt.content)
-        ) + self.token_counter(cast(str, time_prompt.content))
+            str(base_prompt.content)
+        ) + self.token_counter(str(time_prompt.content))
 
         input_messages: list[BaseMessage] = kwargs["user_messages"]
         for input_message in input_messages:
-            rest_tokens -= self.token_counter(cast(str, input_message.content))
+            rest_tokens -= self.token_counter(str(input_message.content))
 
         agent_scratchpad: list[BaseMessage] = kwargs["agent_scratchpad"]
         rest_tokens -= sum(
-            [
-                self.token_counter(cast(str, message.content))
-                for message in agent_scratchpad
-            ]
+            [self.token_counter(str(message.content)) for message in agent_scratchpad]
         )
 
         relevant_docs: list[Document] = kwargs["file_data"]
@@ -63,7 +60,7 @@ class BasicPrompt(BaseChatPromptTemplate):
         for message in previous_messages[-self.min_history_messages :][::-1]:
             if min_history_tokens + min_relevant_tokens > rest_tokens:
                 break
-            min_history_tokens += self.token_counter(message.content)
+            min_history_tokens += self.token_counter(str(message.content))
 
         relevant_memory_tokens = self.get_relevant_tokens(relevant_memory)
         while min_history_tokens + relevant_memory_tokens > rest_tokens:
@@ -71,12 +68,12 @@ class BasicPrompt(BaseChatPromptTemplate):
             relevant_memory_tokens = self.get_relevant_tokens(relevant_memory)
         relevant_contents = self.get_relevant_contents(relevant_memory)
         memory_message = SystemMessage(content=relevant_contents)
-        rest_tokens -= self.token_counter(cast(str, memory_message.content))
+        rest_tokens -= self.token_counter(str(memory_message.content))
 
         historical_messages: list[BaseMessage] = []
         historical_tokens = 0
         for message in previous_messages[-15:][::-1]:
-            historical_tokens += self.token_counter(cast(str, message.content))
+            historical_tokens += self.token_counter(str(message.content))
             if historical_tokens > rest_tokens:
                 break
             historical_messages = [message] + historical_messages

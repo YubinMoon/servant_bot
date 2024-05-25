@@ -3,6 +3,7 @@ class BaseModel:
     description: str
     provider: str
     model: str
+    image: bool
 
 
 class GPT3_5(BaseModel):
@@ -10,6 +11,7 @@ class GPT3_5(BaseModel):
     description: str = "빠르고 저렴한 모델"
     provider: str = "openai"
     model: str = "gpt-3.5-turbo"
+    image: bool = False
 
 
 class GPT4o(BaseModel):
@@ -17,6 +19,7 @@ class GPT4o(BaseModel):
     description: str = "비싸고 느리지만 더 좋은 모델"
     provider: str = "openai"
     model: str = "gpt-4o"
+    image: bool = True
 
 
 def get_models() -> list[BaseModel]:

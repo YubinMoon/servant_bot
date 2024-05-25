@@ -14,6 +14,7 @@ from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from ..chat.memory import get_chat_history_memory, get_memory
+from ..error import ModelImageError
 from .base import BaseAgent
 from .prompt import BasicPrompt
 from .tools import get_tools
@@ -111,8 +112,9 @@ class Basic(BaseAgent):
         return self.message_history.messages
 
     async def get_user_messages(self):
-        messages = await self.load_attachments()
-        messages.append(HumanMessage(content=self.message.content))
+        attachment_messages = await self.load_attachments()
+        user_message = HumanMessage(content=self.message.content)
+        messages = attachment_messages + [user_message]
         return messages
 
     async def load_attachments(self):
@@ -131,6 +133,9 @@ class Basic(BaseAgent):
                 messages.append(message)
             elif file_type.startswith("application/pdf"):
                 message = await self._load_pdf_file(attachment)
+                messages.append(message)
+            elif file_type.startswith("image/"):
+                message = await self._load_image_file(attachment)
                 messages.append(message)
             else:
                 self.message.reply(
@@ -153,6 +158,25 @@ class Basic(BaseAgent):
         for document in documents:
             document.metadata["source"] = attachment.filename
         return await self._insert_content(documents)
+
+    async def _load_image_file(self, attachment: "Attachment"):
+        if not self.model.image:
+            raise ModelImageError(
+                f"{self.model.name} 모델은 이미지를 처리할 수 없어요.\n"
+                "다른 모델을 선택해 주세요."
+            )
+        url = attachment.url
+        message = HumanMessage(
+            content=[
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": url,
+                    },
+                }
+            ]
+        )
+        return message
 
     async def _insert_content(self, documents: "list[Document]"):
         total_token = 0

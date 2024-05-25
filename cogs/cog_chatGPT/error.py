@@ -96,3 +96,16 @@ class NoAITypeError(ChatBaseError):
             color=color.ERROR,
         )
         return embed
+
+
+class ModelImageError(ChatBaseError):
+    def __init__(self, message: str):
+        super().__init__(message)
+
+    def get_embed(self):
+        embed = Embed(
+            title="이미지를 입력할 수 없어요.",
+            description=self.message,
+            color=color.ERROR,
+        )
+        return embed
