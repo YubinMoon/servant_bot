@@ -36,7 +36,6 @@ class ChatHandler(BaseMessageHandler):
             callbacks,
         )
         await agent.run()
-        data = self.token_callback.to_dict()
         await self.record_tokens(self.token_callback.to_dict())
 
     async def record_tokens(self, usage: dict[str, int]) -> None:

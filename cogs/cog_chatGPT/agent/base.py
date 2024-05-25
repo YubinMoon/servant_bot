@@ -41,8 +41,9 @@ class BaseAgent:
             await self._run()
         except openai.APIError as e:
             raise ChatResponseError(e.message)
+        except ChatBaseError as e:
+            raise e
         except Exception as e:
-            traceback.print_exc()
             raise ChatBaseError(str(e))
         finally:
             await db.unlock(self.guild.name, self.key)
