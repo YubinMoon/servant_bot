@@ -26,6 +26,7 @@ class Basic(BaseAgent):
     max_token = 5000
     memory_docs_num = 4
     splitter_chunk_size = 600
+    run_name = "basic"
 
     def __init__(
         self,
@@ -96,7 +97,10 @@ class Basic(BaseAgent):
         )
         agent_executor = AgentExecutor(
             agent=agent, tools=self.tools, verbose=True
-        ).with_config(run_name="agent_executor")
+        ).with_config(
+            run_name=self.run_name,
+            tags=[self.message.author.global_name, self.model.model],
+        )
         return agent_executor
 
     async def save_message(self, user_messagse, output):
@@ -183,3 +187,4 @@ class BasicLong(Basic):
     max_token = 15000
     memory_docs_num = 10
     splitter_chunk_size = 800
+    run_name = "basic_long"
