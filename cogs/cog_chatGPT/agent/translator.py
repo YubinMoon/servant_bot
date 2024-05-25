@@ -16,6 +16,8 @@ if TYPE_CHECKING:
 
 
 class Translator(BaseAgent):
+    run_name = "translator"
+
     def __init__(
         self,
         message: "Message",
@@ -48,7 +50,10 @@ class Translator(BaseAgent):
             | self.llm
             | StrOutputParser()
         )
-        return agent
+        return agent.with_config(
+            run_name=self.run_name,
+            tags=[self.message.author.global_name, self.model.model],
+        )
 
     async def get_user_message(self):
         if self.message.attachments:
