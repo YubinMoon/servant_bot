@@ -1,3 +1,4 @@
+import traceback
 from operator import itemgetter
 from typing import TYPE_CHECKING
 
@@ -13,7 +14,10 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, System
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
+from utils.chat import find_urls
+
 from ..chat.memory import get_chat_history_memory, get_memory
+from ..crawler import get_url_info
 from ..error import ModelImageError
 from .base import BaseAgent
 from .prompt import BasicPrompt
@@ -113,8 +117,36 @@ class Basic(BaseAgent):
 
     async def get_user_messages(self):
         attachment_messages = await self.load_attachments()
+        url_messages = await self.load_url_contents(self.message.content)
         user_message = HumanMessage(content=self.message.content)
-        messages = attachment_messages + [user_message]
+        messages = attachment_messages + url_messages + [user_message]
+        return messages
+
+    async def load_url_contents(self, user_input: str):
+        urls = find_urls(user_input)
+        messages: list[BaseMessage] = []
+        for url in urls:
+            try:
+                info = get_url_info(url)
+                message = SystemMessage(
+                    content=(
+                        f"URL: {url}\n"
+                        f"Title: {info.title}\n"
+                        f"Description: {info.description}\n"
+                    )
+                )
+                messages.append(message)
+                document = Document(
+                    page_content=info.content,
+                    metadata={"source": url, "page": 0},
+                )
+                splitted_docs = self.text_splitter.split_documents([document])
+                await self.memory.aadd_documents(splitted_docs)
+            except Exception as e:
+                await self.message.reply(
+                    f"URL을 불러오는 중 오류가 발생했습니다. ({url})"
+                )
+                traceback.print_exc()
         return messages
 
     async def load_attachments(self):
