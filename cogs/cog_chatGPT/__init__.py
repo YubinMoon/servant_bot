@@ -1,5 +1,3 @@
-import logging
-from pydoc import doc
 from typing import TYPE_CHECKING
 
 from discord import ChannelType

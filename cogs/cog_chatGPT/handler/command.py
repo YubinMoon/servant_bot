@@ -1,12 +1,12 @@
 import asyncio
 from typing import TYPE_CHECKING
 
-from discord import Embed, HTTPException, NotFound
+from discord import Embed, HTTPException
 
+from error.chat import NoHistoryError, UnknownCommandError
 from utils import color
 from utils.logger import get_logger
 
-from ..error import NoHistoryError, UnknownCommandError
 from .base import BaseMessageHandler
 
 if TYPE_CHECKING:

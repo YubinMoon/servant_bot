@@ -2,10 +2,10 @@ from typing import TYPE_CHECKING
 
 from database.chat import get_thread_info
 from database.user import get_used_tokens, set_used_tokens
+from error.chat import NoAITypeError
 
-from ..agent.model import get_template_agent
+from ..chat.agent import get_agent_by_name
 from ..chat.callback import CalcTokenCallback, ChatCallback
-from ..error import NoAITypeError
 from .base import BaseMessageHandler
 
 if TYPE_CHECKING:
@@ -29,13 +29,8 @@ class ChatHandler(BaseMessageHandler):
             raise NoAITypeError("Thread info is not found.")
         callbacks = [self.token_callback, self.chat_callback]
         agent_name = thread_info.get("agent", "error")
-        agent = get_template_agent(
-            agent_name,
-            self.message,
-            thread_info,
-            callbacks,
-        )
-        await agent.run()
+        agent = get_agent_by_name(agent_name)
+        await agent(self.message, thread_info, callbacks).run()
         await self.record_tokens(self.token_callback.to_dict())
 
     async def record_tokens(self, usage: dict[str, int]) -> None:

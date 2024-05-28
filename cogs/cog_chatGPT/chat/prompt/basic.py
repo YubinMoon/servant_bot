@@ -1,9 +1,9 @@
 import time
 from logging import Logger
-from typing import TYPE_CHECKING, Any, Callable, List, cast
+from typing import Any, Callable, List
 
 from langchain_core.documents import Document
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
+from langchain_core.messages import BaseMessage, SystemMessage
 from langchain_core.prompts.chat import BaseChatPromptTemplate
 
 from utils.logger import get_logger
