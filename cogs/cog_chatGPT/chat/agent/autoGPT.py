@@ -1,10 +1,15 @@
 from typing import TYPE_CHECKING
 
+from .base import BaseAgent
+
 if TYPE_CHECKING:
     from discord import Message
 
 
-class AutoGPTAgent:
+class AutoGPTAgent(BaseAgent):
+    name: str = "autoGPT"
+    description: str = "많은 토큰을 사용하지만 자동으로 목표를 처리하는 템플릿"
+
     def __init__(self, message: "Message", thread_info: dict):
         self.message = message
 

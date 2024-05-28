@@ -14,20 +14,23 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, System
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
+from error.chat import ModelImageError
 from utils.chat import find_urls
 
-from ..chat.memory import get_chat_history_memory, get_memory
 from ..crawler import get_url_info
-from ..error import ModelImageError
+from ..memory import get_chat_history_memory, get_memory
+from ..prompt.basic import BasicPrompt
+from ..tool import get_tools
 from .base import BaseAgent
-from .prompt import BasicPrompt
-from .tools import get_tools
 
 if TYPE_CHECKING:
     from discord import Attachment, Message
 
 
 class Basic(BaseAgent):
+    name: str = "basic"
+    description: str = "기본 템플릿"
+
     max_token = 5000
     memory_docs_num = 4
     splitter_chunk_size = 600
@@ -240,6 +243,9 @@ class Basic(BaseAgent):
 
 
 class BasicLong(Basic):
+    name: str = "basic-long"
+    description: str = "토큰 길이 제한이 없는 기본 템플릿"
+
     max_token = 15000
     memory_docs_num = 10
     splitter_chunk_size = 800

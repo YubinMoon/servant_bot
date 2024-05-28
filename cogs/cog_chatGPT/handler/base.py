@@ -1,10 +1,9 @@
 from typing import TYPE_CHECKING
 
 from database import ChatDataManager
+from error.chat import ChatBaseError
 from utils.hash import generate_key
 from utils.logger import get_logger
-
-from ..error import ChatBaseError
 
 if TYPE_CHECKING:
     from discord import Embed, Message

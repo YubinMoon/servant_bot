@@ -1,5 +1,4 @@
 import asyncio
-import traceback
 from typing import TYPE_CHECKING
 
 import openai
@@ -8,17 +7,19 @@ from langchain_core.callbacks.base import AsyncCallbackHandler
 from langchain_openai import ChatOpenAI
 
 from database import chat as db
+from error.chat import ChatBaseError, ChatResponseError
 from utils.hash import generate_key
 
-from ..chat.callback import CalcTokenCallback, ChatCallback
-from ..error import ChatBaseError, ChatResponseError
-from ..models import get_model
+from ..model import get_model
 
 if TYPE_CHECKING:
     from discord import Message
 
 
 class BaseAgent:
+    name: str
+    description: str
+
     def __init__(
         self,
         message: "Message",
@@ -67,8 +68,3 @@ class BaseAgent:
         await asyncio.sleep(10)
         await reply_msg.delete()
         await self.message.delete()
-
-    def _get_callbacks(self):
-        token_callback = CalcTokenCallback()
-        chat_callback = ChatCallback(self.message)
-        return [token_callback, chat_callback]

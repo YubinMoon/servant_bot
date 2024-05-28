@@ -2,9 +2,9 @@ from typing import TYPE_CHECKING
 
 from discord import ChannelType
 
+from error.chat import ChannelCreateError
 from utils.hash import generate_key
 
-from ..error import ChannelCreateError
 from ..view import ModelSelectView
 from .base import BaseCommandHandler
 

@@ -7,8 +7,9 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import RunnablePassthrough
 
-from ..chat.memory import get_chat_history_memory
-from ..error import ChatResponseError
+from error.chat import ChatResponseError
+
+from ..memory import get_chat_history_memory
 from .base import BaseAgent
 
 if TYPE_CHECKING:
@@ -16,6 +17,9 @@ if TYPE_CHECKING:
 
 
 class Translator(BaseAgent):
+    name: str = "translator"
+    description: str = "번역기 템플릿"
+
     run_name = "translator"
 
     def __init__(

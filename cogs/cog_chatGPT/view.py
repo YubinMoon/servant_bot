@@ -1,5 +1,4 @@
 import traceback
-from ast import AugLoad
 from typing import TYPE_CHECKING
 
 import discord
@@ -8,9 +7,9 @@ from discord import SelectOption, ui
 from database.chat import set_thread_info
 from utils.hash import generate_key
 
-from .agent.model import AutoGPTTemplate, TranslatorTemplate, get_templates
-from .agent.tools import get_all_tools
-from .models import get_models
+from .chat.agent import AutoGPTAgent, Translator, get_agents
+from .chat.model import get_models
+from .chat.tool import get_all_tools
 
 if TYPE_CHECKING:
     from discord import Thread
@@ -53,7 +52,7 @@ class AgentSelectView(ui.View):
     class AgentSelect(ui.Select):
         def __init__(self, data: dict) -> None:
             super().__init__()
-            self.templates = get_templates()
+            self.templates = get_agents()
             self.data = data
             self.options = [
                 SelectOption(
@@ -66,9 +65,9 @@ class AgentSelectView(ui.View):
         async def callback(self, interaction: discord.Interaction):
             agent = self.values[0]
             self.data["agent"] = agent
-            if agent == AutoGPTTemplate.name:
+            if agent == AutoGPTAgent.name:
                 await interaction.response.send_modal(AutoGPTModal(data=self.data))
-            elif agent == TranslatorTemplate.name:
+            elif agent == Translator.name:
                 await interaction.response.send_modal(LanguageModal(data=self.data))
             else:
                 await interaction.channel.send(f"{agent} 템플릿을 선택했습니다.")

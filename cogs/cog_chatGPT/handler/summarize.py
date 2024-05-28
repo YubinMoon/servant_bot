@@ -6,9 +6,6 @@ from typing import TYPE_CHECKING
 import openai
 from discord import ChannelType
 
-from utils.hash import generate_key
-
-from ..error import ChannelCreateError
 from .base import BaseCommandHandler
 
 if TYPE_CHECKING:
