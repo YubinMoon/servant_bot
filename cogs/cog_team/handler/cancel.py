@@ -2,9 +2,9 @@ from typing import TYPE_CHECKING
 
 from discord import Embed
 
+from error.team import AlreadyOutTeamError
 from utils import color
 
-from .error import AlreadyOutTeamError
 from .join import JoinTeamHandler
 
 if TYPE_CHECKING:
@@ -24,7 +24,7 @@ class CancelTeamHandler(JoinTeamHandler):
 
     async def action(self):
         index = await self.get_member_index()
-        await self.db.pop_member(self.guild.name, self.team_name, index)
+        await self.db.pop_member(index)
         await self.update_message()
         self.logger.info(
             f"{self.author} (ID: {self.author.id}) cancel joining the team {self.team_name}."
@@ -36,7 +36,7 @@ class CancelTeamHandler(JoinTeamHandler):
         return index
 
     async def get_members_id(self):
-        members_id = await self.db.get_members(self.guild.name, self.team_name)
+        members_id = await self.db.get_members()
         if self.author.id not in members_id:
             raise AlreadyOutTeamError(
                 f"{self.author} (ID: {self.author.id}) tried to cancel joining a team that the user is not in.",

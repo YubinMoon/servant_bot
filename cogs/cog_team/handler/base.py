@@ -1,9 +1,11 @@
+import traceback
 from typing import TYPE_CHECKING
 
-from database import TeamDataManager
-from utils.logger import get_logger
+from discord.ext import commands
 
-from .error import NoTeamError, TeamBaseError
+from database import TeamDataManager
+from error.team import NoTeamError, TeamBaseError
+from utils.logger import get_logger
 
 if TYPE_CHECKING:
     from discord import Embed
@@ -22,15 +24,14 @@ class BaseHandler:
         team_name: str,
     ) -> None:
         if context.guild is None:
-            raise ValueError("Guild is not found.")
-
+            raise commands.GuildNotFound("This command is not available in DM.")
         self.bot = bot
         self.context = context
         self.guild = context.guild
         self.author = context.author
         self.channel = context.channel
         self.team_name = team_name
-        self.db = TeamDataManager(bot)
+        self.db = TeamDataManager(self.guild, team_name)
         self.logger = get_logger(self.logger_name)
 
     async def run(self) -> None:
@@ -40,14 +41,16 @@ class BaseHandler:
         except TeamBaseError as e:
             await self.send_error_message(e.get_embed())
             self.logger.error(e)
+            traceback.print_exc()
 
     async def check_team_name(self):
         if self.team_name == "":
-            team_name = await self.db.get_team_name(self.guild.name)
+            team_name = await self.db.get_team_name()
             if team_name is None:
                 self.logger.error("There is no team.")
                 raise NoTeamError("There is no team.")
             self.team_name = team_name
+            self.db = TeamDataManager(self.guild, self.team_name)
 
     async def action(self) -> None:
         raise NotImplementedError

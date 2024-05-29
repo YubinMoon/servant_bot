@@ -1,4 +1,3 @@
-import traceback
 from typing import TYPE_CHECKING
 
 import discord
@@ -29,6 +28,7 @@ class Team(commands.Cog, name="team"):
         self.bot = bot
         self.logger = get_logger("team")
 
+    @commands.guild_only()
     @commands.hybrid_group(name="team")
     async def team(self, context: "Context") -> None:
         prefix: str = self.bot.config["prefix"]
@@ -49,20 +49,16 @@ class Team(commands.Cog, name="team"):
         embed.add_field(name="Team", value=f"```{help_text}```", inline=False)
         await context.send(embed=embed, ephemeral=True)
 
+    @commands.guild_only()
     @team.command(name="start", description="새로운 팀 생성")
     @app_commands.describe(name="팀 이름")
     async def start(self, context: "Context", name: str = "") -> None:
         if name == "":
             name = get_random_key(6)
-        handler = NewTeamHandler(self.bot, context, name)
-        join_handler = JoinTeamHandler(self.bot, context, name)
-        try:
-            await handler.run()
-            await join_handler.run()
-        except commands.CommandError as e:
-            self.logger.error(e)
-            self.logger.debug(traceback.format_exc())
+        await NewTeamHandler(self.bot, context, name).run()
+        await JoinTeamHandler(self.bot, context, name).run()
 
+    @commands.guild_only()
     @commands.hybrid_command(
         name="q", description="새로운 팀 생성", aliases=["ㅋ", "큐"]
     )
@@ -70,16 +66,13 @@ class Team(commands.Cog, name="team"):
     async def alias_start(self, context: "Context", name: str = "") -> None:
         await self.start(context, name)
 
+    @commands.guild_only()
     @team.command(name="join", description="생성된 팀에 참가")
     @app_commands.describe(name="팀 이름")
     async def join(self, context: "Context", name: str = "") -> None:
-        handler = JoinTeamHandler(self.bot, context, name)
-        try:
-            await handler.run()
-        except commands.CommandError as e:
-            self.logger.error(e)
-            self.logger.debug(traceback.format_exc())
+        await JoinTeamHandler(self.bot, context, name).run()
 
+    @commands.guild_only()
     @commands.hybrid_command(
         name="j",
         description="alias of /team join",
@@ -89,16 +82,13 @@ class Team(commands.Cog, name="team"):
     async def alias_join(self, context: "Context", name: str = "") -> None:
         await self.join(context, name)
 
+    @commands.guild_only()
     @team.command(name="cancel", description="팀 참가 취소")
     @app_commands.describe(name="팀 이름")
     async def cancel_join(self, context: "Context", name: str = "") -> None:
-        handler = CancelTeamHandler(self.bot, context, name)
-        try:
-            await handler.run()
-        except commands.CommandError as e:
-            self.logger.error(e)
-            self.logger.debug(traceback.format_exc())
+        await CancelTeamHandler(self.bot, context, name).run()
 
+    @commands.guild_only()
     @commands.hybrid_command(
         name="c",
         description="alias of /team cancel",
@@ -108,16 +98,13 @@ class Team(commands.Cog, name="team"):
     async def alias_cencel_join(self, context: "Context", name: str = "") -> None:
         await self.cancel_join(context, name)
 
+    @commands.guild_only()
     @team.command(name="shuffle", description="랜덤 팀 생성")
     @app_commands.describe(name="팀 이름")
     async def shuffle(self, context: "Context", name: str = "") -> None:
-        handler = ShuffleTeamHandler(self.bot, context, name)
-        try:
-            await handler.run()
-        except commands.CommandError as e:
-            self.logger.error(e)
-            self.logger.debug(traceback.format_exc())
+        await ShuffleTeamHandler(self.bot, context, name).run()
 
+    @commands.guild_only()
     @commands.hybrid_command(
         name="s",
         description="alias of /team shuffle",
@@ -127,16 +114,13 @@ class Team(commands.Cog, name="team"):
     async def alias_shuffle(self, context: "Context", name: str = "") -> None:
         await self.shuffle(context, name)
 
+    @commands.guild_only()
     @team.command(name="info", description="팀 확인")
     @app_commands.describe(name="팀 이름")
     async def info(self, context: "Context", name: str = "") -> None:
-        handler = TeamInfoHandler(self.bot, context, name)
-        try:
-            await handler.run()
-        except commands.CommandError as e:
-            self.logger.error(e)
-            self.logger.debug(traceback.format_exc())
+        await TeamInfoHandler(self.bot, context, name).run()
 
+    @commands.guild_only()
     @commands.hybrid_command(
         name="t",
         description="alias of /team info",
@@ -146,16 +130,13 @@ class Team(commands.Cog, name="team"):
     async def alias_info(self, context: "Context", name: str = "") -> None:
         await self.info(context, name)
 
+    @commands.guild_only()
     @team.command(name="predict", description="팀 예측")
     @app_commands.describe(name="팀 이름")
     async def predict(self, context: "Context", name: str = "") -> None:
-        handler = TeamPredictHandler(self.bot, context, name)
-        try:
-            await handler.run()
-        except commands.CommandError as e:
-            self.logger.error(e)
-            self.logger.debug(traceback.format_exc())
+        await TeamPredictHandler(self.bot, context, name).run()
 
+    @commands.guild_only()
     @commands.hybrid_command(
         name="p",
         description="alias of /team predict",

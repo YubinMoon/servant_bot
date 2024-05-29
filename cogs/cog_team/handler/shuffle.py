@@ -3,10 +3,10 @@ from typing import TYPE_CHECKING
 
 from discord import Embed
 
+from error.team import MemberNumError
 from utils import color
 
 from .base import BaseHandler
-from .error import MemberNumError
 
 if TYPE_CHECKING:
     from discord import Member
@@ -25,7 +25,7 @@ class ShuffleTeamHandler(BaseHandler):
         self.multiple = 0.1
 
     async def action(self):
-        members_id = await self.db.get_members(self.guild.name, self.team_name)
+        members_id = await self.db.get_members()
         members = [self.guild.get_member(member) for member in members_id]
         if len(members) not in [5, 10]:
             raise MemberNumError(
@@ -39,7 +39,7 @@ class ShuffleTeamHandler(BaseHandler):
 
     async def shuffle_rank(self, members: "list[Member]") -> None:
         team = await self.get_rank_team()
-        await self.db.add_history(self.guild.name, self.team_name, team)
+        await self.db.add_history(team)
         embed = Embed(
             title=f"{self.team_name} 팀",
             description="라인을 배정했어요.",
@@ -68,7 +68,7 @@ class ShuffleTeamHandler(BaseHandler):
 
     async def get_weight(self) -> list[list[float]]:
         weight = self.base_weight.copy()
-        records = await self.db.get_history(self.guild.name, self.team_name)
+        records = await self.db.get_history()
         for record in records:
             weight = self.calc_weight(weight, record)
         return weight

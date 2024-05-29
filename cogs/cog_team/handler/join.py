@@ -2,10 +2,10 @@ from typing import TYPE_CHECKING
 
 from discord import Embed, NotFound
 
+from error.team import AlreadyInTeamError, NoTeamError, NoTeamMessageError
 from utils import color
 
 from .base import BaseHandler
-from .error import AlreadyInTeamError, NoTeamError, NoTeamMessageError
 
 if TYPE_CHECKING:
     from discord import Message
@@ -23,15 +23,15 @@ class JoinTeamHandler(BaseHandler):
         super().__init__(bot, context, team_name)
 
     async def action(self) -> None:
-        await self.check_members()
-        await self.db.add_member(self.guild.name, self.team_name, self.author)
+        # await self.check_members()
+        await self.db.add_member(self.author)
         await self.update_message()
         self.logger.info(
             f"{self.author} (ID: {self.author.id}) joined the team {self.team_name}."
         )
 
     async def check_members(self):
-        members = await self.db.get_members(self.guild.name, self.team_name)
+        members = await self.db.get_members()
         if self.author.id in members:
             raise AlreadyInTeamError(
                 f"{self.author} (ID: {self.author.id}) tried to join a team {self.team_name} that the user is already in.",
@@ -44,7 +44,7 @@ class JoinTeamHandler(BaseHandler):
         await self.notify(message)
 
     async def get_message(self):
-        message_id = await self.db.get_message_id(self.guild.name, self.team_name)
+        message_id = await self.db.get_message_id()
         if message_id is None:
             raise NoTeamError("Team is not found.", self.team_name)
 
@@ -57,7 +57,7 @@ class JoinTeamHandler(BaseHandler):
         return message
 
     async def refresh_message(self, message: "Message") -> None:
-        members = await self.db.get_members(self.guild.name, self.team_name)
+        members = await self.db.get_members()
         if message.embeds == []:
             raise NoTeamMessageError("Team Create embed is not found.", self.team_name)
         embed = message.embeds[0]

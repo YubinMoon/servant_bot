@@ -2,10 +2,10 @@ from typing import TYPE_CHECKING
 
 from discord import Embed
 
+from error.team import NoMemberError
 from utils import color
 
 from .base import BaseHandler
-from .error import NoMemberError
 
 if TYPE_CHECKING:
     from discord import Member
@@ -27,7 +27,7 @@ class TeamInfoHandler(BaseHandler):
         await self.send_result(members)
 
     async def get_members(self):
-        members_id = await self.db.get_members(self.guild.name, self.team_name)
+        members_id = await self.db.get_members()
         members = [self.guild.get_member(member) for member in members_id]
         members = [member for member in members if member is not None]
         if members == []:
