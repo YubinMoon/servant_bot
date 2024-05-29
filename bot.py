@@ -25,6 +25,8 @@ class ServantBot(commands.Bot):
     async def load_db(self) -> None:
         try:
             self.database = await get_redis()
+            self.database.ping()
+            self.logger.info("Connected to the Redis server")
         except:
             self.logger.error("Failed to connect to the Redis server")
             self.logger.debug(traceback.format_exc())
@@ -180,5 +182,8 @@ class ServantBot(commands.Bot):
             self.logger.warning(
                 f"{context.author} (ID: {context.author.id}) tried to execute the invalid command '{context.invoked_with}'"
             )
+        elif isinstance(error, commands.CommandError):
+            self.logger.error(error)
+            self.logger.debug(traceback.format_exc())
         else:
             raise error

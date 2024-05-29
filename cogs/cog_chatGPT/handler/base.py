@@ -1,6 +1,5 @@
 from typing import TYPE_CHECKING
 
-from database import ChatDataManager
 from error.chat import ChatBaseError
 from utils.hash import generate_key
 from utils.logger import get_logger
@@ -17,7 +16,6 @@ class BaseHandler:
 
     def __init__(self, bot: "ServantBot") -> None:
         self.bot = bot
-        self.db = ChatDataManager(bot)
         self.logger = get_logger(self.logger_name)
 
     async def run(self, *args, **kwargs):
