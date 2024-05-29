@@ -7,7 +7,7 @@ from database.chat import get_thread_info
 from utils.hash import generate_key
 from utils.logger import get_logger
 
-from .handler import ChatHandler, CommandHandler, NewChatHandler, SummarizeHandler
+from .handler import ChatHandler, NewChatHandler, SummarizeHandler
 
 if TYPE_CHECKING:
     from discord import Message
@@ -51,10 +51,7 @@ class ChatGPT(commands.Cog, name="chatGPT"):
             message.channel.type == ChannelType.public_thread
             and message.channel.owner == self.bot.user
         ):
-            if message.content.startswith("?"):
-                handler = CommandHandler(self.bot, message)
-            else:
-                handler = ChatHandler(self.bot, message)
+            handler = ChatHandler(self.bot, message)
             await handler.run()
 
 
