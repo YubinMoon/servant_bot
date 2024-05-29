@@ -2,7 +2,8 @@ from typing import TYPE_CHECKING
 
 import discord
 
-from .error import RankMemberNumError
+from error.team import RankMemberNumError
+
 from .shuffle import ShuffleTeamHandler
 
 if TYPE_CHECKING:
@@ -19,7 +20,7 @@ class TeamPredictHandler(ShuffleTeamHandler):
         super().__init__(bot, context, team_name)
 
     async def action(self):
-        members_id = await self.db.get_members(self.guild.name, self.team_name)
+        members_id = await self.db.get_members()
         members = [self.guild.get_member(member) for member in members_id]
         if len(members) == 5:
             await self.predict(members)

@@ -21,7 +21,7 @@ class NewTeamHandler(BaseHandler):
 
     async def action(self):
         message = await self.setup_embed()
-        await self.db.new_team(self.guild.name, message.id, self.team_name)
+        await self.db.new_team(message.id)
         self.logger.info(f"created new team: {self.team_name} ({message.id})")
 
     async def setup_embed(self) -> "Message":

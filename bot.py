@@ -184,6 +184,5 @@ class ServantBot(commands.Bot):
             )
         elif isinstance(error, commands.CommandError):
             self.logger.error(error)
-            self.logger.debug(traceback.format_exc())
         else:
             raise error
