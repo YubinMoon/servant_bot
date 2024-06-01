@@ -153,8 +153,8 @@ class General(commands.Cog, name="general"):
         test_channel = guild.text_channels[-1]
 
         if self._restrict:
-            if before.id == os.getenv("PJY_ID") and guild.id == os.getenv(
-                "PJY_GUILD_ID"
+            if after.id == int(os.getenv("PJY_ID")) and guild.id == int(
+                os.getenv("PJY_GUILD_ID")
             ):
                 # 박정인 온라인 확인
                 if (
