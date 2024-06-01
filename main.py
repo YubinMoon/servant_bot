@@ -58,6 +58,7 @@ If you want to use prefix commands, make sure to also enable the intent below in
 """
 intents.message_content = True
 intents.members = True
+intents.presences = True
 
 
 bot = ServantBot(intents=intents, config=config)
