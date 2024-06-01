@@ -168,8 +168,15 @@ class General(commands.Cog, name="general"):
                     await test_channel.send(
                         f"{os.getenv('PJY_NAME')} 컴퓨터 온라인 검거"
                     )
-                if before.activity != after.activity:
-                    if "VALORANT" in str(after.activity):
+
+                before_activity = (
+                    "" if before.activity is None else (before.activity.name or "")
+                )
+                after_activity = (
+                    "" if after.activity is None else (after.activity.name or "")
+                )
+                if before_activity != after_activity:
+                    if "VALORANT" in after_activity:
                         if after.voice is None:
                             self.logger.info(f"{os.getenv('PJY_NAME')} 게임 시작")
                             await first_channel.send(
