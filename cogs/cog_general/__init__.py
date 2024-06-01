@@ -1,3 +1,4 @@
+import os
 import platform
 
 import discord
@@ -15,6 +16,8 @@ class General(commands.Cog, name="general"):
         self.bot = bot
         self.config = bot.config
         self.logger = get_logger("general")
+
+        self._restrict = False
 
     @commands.hybrid_command(name="help", description="모든 명령어를 보여줍니다.")
     async def help(self, context: Context) -> None:
@@ -118,6 +121,59 @@ class General(commands.Cog, name="general"):
             await context.send("개인 메시지로 초대 링크를 보냈어요! 📩", ephemeral=True)
         except discord.Forbidden:
             await context.send(embed=embed, ephemeral=True)
+
+    @commands.hybrid_command(
+        name="restrict",
+        description="봇의 소스 코드를 보여줍니다.",
+    )
+    @app_commands.choices(
+        onoff=[
+            app_commands.Choice(name="on", value="on"),
+            app_commands.Choice(name="off", value="off"),
+        ]
+    )
+    async def restrict(self, context: Context, onoff: str) -> None:
+        if onoff == "on":
+            self._restrict = True
+            await context.send(
+                f"{os.getenv('PJY_NAME')} 몰컴 감시기 가동", ephemeral=True
+            )
+        elif onoff == "off":
+            self._restrict = False
+            await context.send(
+                f"{os.getenv('PJY_NAME')} 몰컴 감시기 중지", ephemeral=True
+            )
+        else:
+            await context.send("잘못된 입력입니다.")
+
+    @commands.Cog.listener()
+    async def on_presence_update(self, before: discord.Member, after: discord.Member):
+        guild = before.guild
+        first_channel = guild.text_channels[0]
+        test_channel = guild.text_channels[-1]
+
+        if self._restrict:
+            if before.id == os.getenv("PJY_ID") and guild.id == os.getenv(
+                "PJY_GUILD_ID"
+            ):
+                # 박정인 온라인 확인
+                if (
+                    before.desktop_status != after.desktop_status
+                    and after.desktop_status == discord.Status.online
+                ):
+                    self.logger.info(f"{os.getenv('PJY_NAME')} 컴퓨터 온라인 검거")
+                    await test_channel.send(
+                        f"{os.getenv('PJY_NAME')} 컴퓨터 온라인 검거"
+                    )
+                if before.activity != after.activity:
+                    if "VALORANT" in str(after.activity):
+                        if after.voice is None:
+                            self.logger.info(f"{os.getenv('PJY_NAME')} 게임 시작")
+                            await first_channel.send(
+                                "WARNING! WARNING! WARNING!\n"
+                                f"{after.mention}몰로란트 검거\n"
+                                "WARNING! WARNING! WARNING!"
+                            )
 
 
 async def setup(bot: ServantBot) -> None:
