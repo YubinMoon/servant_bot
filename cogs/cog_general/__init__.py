@@ -1,5 +1,6 @@
 import os
 import platform
+from time import time
 
 import discord
 from discord import app_commands
@@ -18,6 +19,7 @@ class General(commands.Cog, name="general"):
         self.logger = get_logger("general")
 
         self._restrict = False
+        self.cooldown = time()
 
     @commands.hybrid_command(name="help", description="모든 명령어를 보여줍니다.")
     async def help(self, context: Context) -> None:
@@ -151,6 +153,7 @@ class General(commands.Cog, name="general"):
         guild = before.guild
         first_channel = guild.text_channels[0]
         test_channel = guild.text_channels[-1]
+        self.logger.info(f"{before.activity} -> {after.activity}")
 
         if self._restrict:
             if after.id == int(os.getenv("PJY_ID")) and guild.id == int(
