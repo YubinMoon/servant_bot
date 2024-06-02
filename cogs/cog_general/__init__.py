@@ -168,15 +168,6 @@ class General(commands.Cog, name="general"):
                         await test_channel.send(
                             f"{os.getenv('PJY_NAME')} 컴퓨터 온라인 검거.", silent=True
                         )
-                elif (
-                    before.mobile_status != after.mobile_status
-                    and after.mobile_status == discord.Status.online
-                ):
-                    self.logger.info(f"{os.getenv('PJY_NAME')} 모바일 온라인 검거")
-                    if self._restrict:
-                        await test_channel.send(
-                            f"{os.getenv('PJY_NAME')} 모바일 온라인 검거.", silent=True
-                        )
 
                 before_activity = (
                     "" if before.activity is None else (before.activity.name or "")
