@@ -1,5 +1,6 @@
 import os
 import platform
+from datetime import datetime
 from time import time
 
 import discord
@@ -19,7 +20,8 @@ class General(commands.Cog, name="general"):
         self.logger = get_logger("general")
 
         self._restrict = False
-        self.cooldown = time()
+        self._start_time_val = datetime.now()
+        self._start_time_lol = datetime.now()
 
     @commands.hybrid_command(name="help", description="모든 명령어를 보여줍니다.")
     async def help(self, context: Context) -> None:
@@ -178,11 +180,60 @@ class General(commands.Cog, name="general"):
                 if before_activity != after_activity:
                     if "VALORANT" in after_activity:
                         if after.voice is None:
-                            self.logger.info(f"{os.getenv('PJY_NAME')} 게임 시작")
+                            self.logger.info(f"{os.getenv('PJY_NAME')} 몰로란트 시작")
                             if self._restrict:
+                                self._start_time_val = datetime.now()
                                 await first_channel.send(
                                     "WARNING! WARNING! WARNING!\n"
                                     f"{after.mention}몰로란트 검거\n"
+                                    "WARNING! WARNING! WARNING!"
+                                )
+                    elif "League of Legends" in after_activity:
+                        if after.voice is None:
+                            self.logger.info(f"{os.getenv('PJY_NAME')} 몰롤 시작")
+                            if self._restrict:
+                                self._start_time_lol = datetime.now()
+                                await first_channel.send(
+                                    "WARNING! WARNING! WARNING!\n"
+                                    f"{after.mention}몰롤 검거\n"
+                                    "WARNING! WARNING! WARNING!"
+                                )
+                    elif "VALORANT" in before_activity and after_activity == "":
+                        if after.voice is None:
+                            self.logger.info(f"{os.getenv('PJY_NAME')} 게임 종료")
+                            if self._restrict:
+                                _time = datetime.now() - self._start_time_val
+                                seconds = _time.seconds
+                                minute = seconds // 60
+                                time_format = "몰컴 시간: "
+                                if minute:
+                                    time_format += f"{minute}분 "
+                                time_format += f"{seconds % 60}초"
+
+                                await first_channel.send(
+                                    "WARNING! WARNING! WARNING!\n"
+                                    f"{after.mention}몰로란트 종료\n"
+                                    f"{time_format}\n"
+                                    "WARNING! WARNING! WARNING!"
+                                )
+                    elif (
+                        "League of Legends" in before_activity and after_activity == ""
+                    ):
+                        if after.voice is None:
+                            self.logger.info(f"{os.getenv('PJY_NAME')} 게임 종료")
+                            if self._restrict:
+                                _time = datetime.now() - self._start_time_lol
+                                seconds = _time.seconds
+                                minute = seconds // 60
+                                time_format = "몰컴 시간: "
+                                if minute:
+                                    time_format += f"{minute}분 "
+                                time_format += f"{seconds % 60}초"
+
+                                await first_channel.send(
+                                    "WARNING! WARNING! WARNING!\n"
+                                    f"{after.mention}몰롤 종료\n"
+                                    f"{time_format}\n"
                                     "WARNING! WARNING! WARNING!"
                                 )
 
