@@ -5,6 +5,7 @@ openai
 hiredis
 redis
 tiktoken
+langgraph
 langchain
 langchain-openai
 wikipedia
