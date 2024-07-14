@@ -1,44 +1,32 @@
 import time
-from logging import Logger
+from textwrap import dedent
 from typing import Any, Callable, List
 
 from langchain_core.documents import Document
 from langchain_core.messages import BaseMessage, SystemMessage
 from langchain_core.prompts.chat import BaseChatPromptTemplate
 
+from utils.chat import get_token_count
 from utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class BasicPrompt(BaseChatPromptTemplate):
-    input_variables: List[str] = ["file_data", "messages", "user_messages"]
-    token_counter: Callable[[str], int]
-    send_token_limit: int = 4196
+    input_variables: List[str] = ["file_data", "messages"]
+    send_token_limit: int = 10000
     min_relevant_docs: int = 3
-    min_history_messages: int = 4
-    logger: Logger = get_logger("basic_long_prompt")
+    min_history_messages: int = 6
 
     def format_messages(self, **kwargs: Any) -> List[BaseMessage]:
         rest_tokens = self.send_token_limit
 
-        base_prompt = SystemMessage(
-            content="You are very powerful assistant."
-            "If you need more information, you can ask to user."
-        )
-        time_prompt = SystemMessage(
-            content=f"The current time and date is {time.strftime('%c')}"
-        )
-        rest_tokens -= self.token_counter(
-            str(base_prompt.content)
-        ) + self.token_counter(str(time_prompt.content))
+        system_prompt = self.get_system_message()
+        rest_tokens -= get_token_count(str(system_prompt.content))
 
-        input_messages: list[BaseMessage] = kwargs["user_messages"]
-        for input_message in input_messages:
-            rest_tokens -= self.token_counter(str(input_message.content))
-
-        agent_scratchpad: list[BaseMessage] = kwargs["agent_scratchpad"]
-        rest_tokens -= sum(
-            [self.token_counter(str(message.content)) for message in agent_scratchpad]
-        )
+        # input_messages: list[BaseMessage] = kwargs["user_input"]
+        # for input_message in input_messages:
+        #     rest_tokens -= get_token_count(str(input_message.content))
 
         relevant_docs: list[Document] = kwargs["file_data"]
         relevant_memory = []
@@ -46,13 +34,10 @@ class BasicPrompt(BaseChatPromptTemplate):
             relevant_memory.append(
                 f"Source: {relevant_doc.metadata['source']} "
                 f"({relevant_doc.metadata['page']}Page) - "
-                f"{relevant_doc.page_content}\n"
+                f"{relevant_doc.page_content}"
             )
         min_relevant_tokens = sum(
-            [
-                self.token_counter(doc)
-                for doc in relevant_memory[: self.min_relevant_docs]
-            ]
+            [get_token_count(doc) for doc in relevant_memory[: self.min_relevant_docs]]
         )
 
         previous_messages: list[BaseMessage] = kwargs["messages"]
@@ -60,7 +45,7 @@ class BasicPrompt(BaseChatPromptTemplate):
         for message in previous_messages[-self.min_history_messages :][::-1]:
             if min_history_tokens + min_relevant_tokens > rest_tokens:
                 break
-            min_history_tokens += self.token_counter(str(message.content))
+            min_history_tokens += get_token_count(str(message.content))
 
         relevant_memory_tokens = self.get_relevant_tokens(relevant_memory)
         while min_history_tokens + relevant_memory_tokens > rest_tokens:
@@ -68,29 +53,75 @@ class BasicPrompt(BaseChatPromptTemplate):
             relevant_memory_tokens = self.get_relevant_tokens(relevant_memory)
         relevant_contents = self.get_relevant_contents(relevant_memory)
         memory_message = SystemMessage(content=relevant_contents)
-        rest_tokens -= self.token_counter(str(memory_message.content))
+        rest_tokens -= get_token_count(str(memory_message.content))
 
         historical_messages: list[BaseMessage] = []
         historical_tokens = 0
         for message in previous_messages[-15:][::-1]:
-            historical_tokens += self.token_counter(str(message.content))
+            historical_tokens += get_token_count(str(message.content))
             if historical_tokens > rest_tokens:
                 break
             historical_messages = [message] + historical_messages
 
-        messages: List[BaseMessage] = [base_prompt, time_prompt, memory_message]
+        messages: List[BaseMessage] = [system_prompt, memory_message]
         messages += historical_messages
-        messages.extend(input_messages)
-        messages.extend(agent_scratchpad)
-        self.logger.debug(f"formatted messages: {messages}")
+        # messages.extend(input_messages)
+        logger.debug(f"formatted messages: {messages}")
         return messages
+
+    def get_system_message(self) -> SystemMessage:
+        return SystemMessage(
+            content=dedent(
+                f"""
+                You are a chat assistant named 'Servant'.
+                You need to receive the user's question, clearly understand their intent, and provide the optimal answer that the user needs.
+                To fully grasp the user's intent, you may request additional questions from the user.
+
+                You must follow these guidelines to respond to the user:
+                - Before answering the user, you should think step-by-step within the <thinking> tag.
+                - The final answer you provide to the user should be output within the <answer> tag.
+                - You can use the additional materials provided by the user in <documents> to answer.
+                
+                The following is an example.
+                <example>
+                <documents>
+                    (Additional materials provided by the user)
+                </documents>
+                <user>
+                    (A user's question)
+                </user>
+                <thinking>
+                    (Your thought process)
+                </thinking>
+                <answer>
+                    (Your final answer)
+                </answer>
+                </example>
+                <example>
+                <user>
+                    What is the capital of France?
+                </user>
+                <thinking>
+                    I need to find the capital of France.
+                </thinking>
+                <answer>
+                    The capital of France is Paris.
+                </answer>
+                
+                The current time and date is {time.strftime('%c')}
+                """
+            )
+        )
 
     def get_relevant_tokens(self, relevat_memory: list[Document]):
         contents = self.get_relevant_contents(relevat_memory)
-        return self.token_counter(contents)
+        return get_token_count(contents)
 
-    def get_relevant_contents(self, relevant_memory: list[Document]):
-        return (
-            f"You can refer to these documents "
-            f"from your memory:\n{relevant_memory}\n\n"
+    def get_relevant_contents(self, relevant_memory: list):
+        return dedent(
+            f"""
+            <documents>
+            {relevant_memory}
+            </documents>
+            """
         )

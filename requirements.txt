@@ -8,6 +8,7 @@ tiktoken
 langgraph
 langchain
 langchain-openai
+langchain-anthropic
 wikipedia
 langchain-google-community
 python-magic

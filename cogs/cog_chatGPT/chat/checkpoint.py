@@ -10,9 +10,9 @@ from redis.asyncio import ConnectionPool as AsyncConnectionPool
 from redis.asyncio import Redis as AsyncRedis
 
 from database import get_async_redis, get_sync_redis
+from utils.logger import get_logger
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class JsonAndBinarySerializer(JsonPlusSerializer):
@@ -124,15 +124,15 @@ class RedisSaver(BaseCheckpointSaver):
                     if not all_keys:
                         logger.info(f"No checkpoints found for thread_id: {thread_id}")
                         return None
-                    latest_key = max(all_keys, key=lambda k: k.decode().split(":")[-1])
-                    key = latest_key.decode()
+                    latest_key = max(all_keys, key=lambda k: k.split(":")[-1])
+                    key = latest_key
                 checkpoint_data = conn.hgetall(key)
                 if not checkpoint_data:
                     logger.info(f"No valid checkpoint data found for key: {key}")
                     return None
-                checkpoint = self.serde.loads(checkpoint_data[b"checkpoint"].decode())
-                metadata = self.serde.loads(checkpoint_data[b"metadata"].decode())
-                parent_ts = checkpoint_data.get(b"parent_ts", b"").decode()
+                checkpoint = self.serde.loads(checkpoint_data["checkpoint"])
+                metadata = self.serde.loads(checkpoint_data["metadata"])
+                parent_ts = checkpoint_data.get("parent_ts", "")
                 parent_config = (
                     {"configurable": {"thread_id": thread_id, "thread_ts": parent_ts}}
                     if parent_ts
@@ -163,15 +163,15 @@ class RedisSaver(BaseCheckpointSaver):
                     if not all_keys:
                         logger.info(f"No checkpoints found for thread_id: {thread_id}")
                         return None
-                    latest_key = max(all_keys, key=lambda k: k.decode().split(":")[-1])
-                    key = latest_key.decode()
+                    latest_key = max(all_keys, key=lambda k: k.split(":")[-1])
+                    key = latest_key
                 checkpoint_data = await conn.hgetall(key)
                 if not checkpoint_data:
                     logger.info(f"No valid checkpoint data found for key: {key}")
                     return None
-                checkpoint = self.serde.loads(checkpoint_data[b"checkpoint"].decode())
-                metadata = self.serde.loads(checkpoint_data[b"metadata"].decode())
-                parent_ts = checkpoint_data.get(b"parent_ts", b"").decode()
+                checkpoint = self.serde.loads(checkpoint_data["checkpoint"])
+                metadata = self.serde.loads(checkpoint_data["metadata"])
+                parent_ts = checkpoint_data.get("parent_ts", "")
                 parent_config = (
                     {"configurable": {"thread_id": thread_id, "thread_ts": parent_ts}}
                     if parent_ts
@@ -207,18 +207,15 @@ class RedisSaver(BaseCheckpointSaver):
                     keys = [
                         k
                         for k in keys
-                        if k.decode().split(":")[-1]
-                        < before["configurable"]["thread_ts"]
+                        if k.split(":")[-1] < before["configurable"]["thread_ts"]
                     ]
-                keys = sorted(
-                    keys, key=lambda k: k.decode().split(":")[-1], reverse=True
-                )
+                keys = sorted(keys, key=lambda k: k.split(":")[-1], reverse=True)
                 if limit:
                     keys = keys[:limit]
                 for key in keys:
                     data = conn.hgetall(key)
                     if data and "checkpoint" in data and "metadata" in data:
-                        thread_ts = key.decode().split(":")[-1]
+                        thread_ts = key.split(":")[-1]
                         yield CheckpointTuple(
                             config={
                                 "configurable": {
@@ -226,15 +223,13 @@ class RedisSaver(BaseCheckpointSaver):
                                     "thread_ts": thread_ts,
                                 }
                             },
-                            checkpoint=self.serde.loads(data["checkpoint"].decode()),
-                            metadata=self.serde.loads(data["metadata"].decode()),
+                            checkpoint=self.serde.loads(data["checkpoint"]),
+                            metadata=self.serde.loads(data["metadata"]),
                             parent_config=(
                                 {
                                     "configurable": {
                                         "thread_id": thread_id,
-                                        "thread_ts": data.get(
-                                            "parent_ts", b""
-                                        ).decode(),
+                                        "thread_ts": data.get("parent_ts", ""),
                                     }
                                 }
                                 if data.get("parent_ts")
@@ -265,18 +260,15 @@ class RedisSaver(BaseCheckpointSaver):
                     keys = [
                         k
                         for k in keys
-                        if k.decode().split(":")[-1]
-                        < before["configurable"]["thread_ts"]
+                        if k.split(":")[-1] < before["configurable"]["thread_ts"]
                     ]
-                keys = sorted(
-                    keys, key=lambda k: k.decode().split(":")[-1], reverse=True
-                )
+                keys = sorted(keys, key=lambda k: k.split(":")[-1], reverse=True)
                 if limit:
                     keys = keys[:limit]
                 for key in keys:
                     data = await conn.hgetall(key)
                     if data and "checkpoint" in data and "metadata" in data:
-                        thread_ts = key.decode().split(":")[-1]
+                        thread_ts = key.split(":")[-1]
                         yield CheckpointTuple(
                             config={
                                 "configurable": {
@@ -284,15 +276,13 @@ class RedisSaver(BaseCheckpointSaver):
                                     "thread_ts": thread_ts,
                                 }
                             },
-                            checkpoint=self.serde.loads(data["checkpoint"].decode()),
-                            metadata=self.serde.loads(data["metadata"].decode()),
+                            checkpoint=self.serde.loads(data["checkpoint"]),
+                            metadata=self.serde.loads(data["metadata"]),
                             parent_config=(
                                 {
                                     "configurable": {
                                         "thread_id": thread_id,
-                                        "thread_ts": data.get(
-                                            "parent_ts", b""
-                                        ).decode(),
+                                        "thread_ts": data.get("parent_ts", ""),
                                     }
                                 }
                                 if data.get("parent_ts")
