@@ -8,7 +8,7 @@ import discord
 from discord.ext import commands, tasks
 from discord.ext.commands import Context
 
-from database import get_redis
+from database import get_async_redis
 from utils.logger import get_logger
 
 
@@ -24,7 +24,7 @@ class ServantBot(commands.Bot):
 
     async def load_db(self) -> None:
         try:
-            async with get_redis() as db:
+            async with get_async_redis() as db:
                 db.ping()
             self.logger.info("Connected to the Redis server")
         except:
