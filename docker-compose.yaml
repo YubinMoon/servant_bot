@@ -12,5 +12,5 @@ services:
             - "${REDIS_PORT}:6379"
             - "${REDIS_WEB_PORT}:8001"
         volumes:
-            - "./database:/data"
-            - "./database/redis.conf:/redis-stack.conf"
+            - "./database/redis:/data"
+            - "./database/redis/redis.conf:/redis-stack.conf"

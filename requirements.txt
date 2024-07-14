@@ -16,3 +16,4 @@ lxml
 redisvl 
 pypdf
 pydantic
+aiosqlite

@@ -8,8 +8,10 @@ from langchain_core.messages import HumanMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_core.vectorstores import VectorStore
 from langchain_openai import ChatOpenAI
+from langgraph.checkpoint.aiosqlite import AsyncSqliteSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import AnyMessage, add_messages
+from sqlalchemy import true
 from typing_extensions import TypedDict
 
 from ..checkpoint import RedisSaver
@@ -23,8 +25,9 @@ class BasicState(TypedDict):
 
 async def _retrieve(
     state: BasicState, config: RunnableConfig, memory: Optional[VectorStore]
-):
+):  # -> dict[str, list] | dict[str, List[Document]]:
     if memory is None:
+        print("file_data pass")
         return {"file_data": []}
     retriever = memory.as_retriever(search_kwargs={"k": 10})
     user_messgaes = []
@@ -42,7 +45,7 @@ async def _retrieve(
 async def _agent(state: BasicState, config: RunnableConfig, model: BaseChatModel):
     prompt = BasicPrompt()
     chain = prompt | model.with_config(tags=["final_node"])
-    result = await chain.ainvoke(state)
+    result = await chain.ainvoke(state, config=config)
     return {"messages": result}
 
 
@@ -51,9 +54,9 @@ def get_basic_app(
     memory: Optional[VectorStore] = None,
 ):
     if "gpt" in model:
-        _model = ChatOpenAI(model=model, streaming=True)
+        _model = ChatOpenAI(model=model, streaming=True, stream_usage=True)
     elif "claude" in model:
-        model = ChatAnthropic(model=model, streaming=True)
+        model = ChatAnthropic(model=model, streaming=True, stream_usage=True)
     else:
         raise ValueError(f"Invalid model '{model}'")
 
@@ -69,7 +72,7 @@ def get_basic_app(
     graph_builder.add_edge("retrieve", "agent")
     graph_builder.add_edge("agent", END)
 
-    checkpoint = RedisSaver()
+    checkpoint = AsyncSqliteSaver.from_conn_string("database/sqlite/checkpoint.db")
 
     app = graph_builder.compile(checkpointer=checkpoint)
 
