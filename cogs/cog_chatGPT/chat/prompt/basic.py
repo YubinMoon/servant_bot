@@ -1,4 +1,5 @@
 import time
+from pprint import pprint
 from textwrap import dedent
 from typing import Any, Callable, List
 
@@ -23,10 +24,6 @@ class BasicPrompt(BaseChatPromptTemplate):
 
         system_prompt = self.get_system_message()
         rest_tokens -= get_token_count(str(system_prompt.content))
-
-        # input_messages: list[BaseMessage] = kwargs["user_input"]
-        # for input_message in input_messages:
-        #     rest_tokens -= get_token_count(str(input_message.content))
 
         relevant_docs: list[Document] = kwargs["file_data"]
         relevant_memory = []
@@ -65,8 +62,6 @@ class BasicPrompt(BaseChatPromptTemplate):
 
         messages: List[BaseMessage] = [system_prompt, memory_message]
         messages += historical_messages
-        # messages.extend(input_messages)
-        logger.debug(f"formatted messages: {messages}")
         return messages
 
     def get_system_message(self) -> SystemMessage:
@@ -81,12 +76,18 @@ class BasicPrompt(BaseChatPromptTemplate):
                 - Before answering the user, you should think step-by-step within the <thinking> tag.
                 - The final answer you provide to the user should be output within the <answer> tag.
                 - You can use the additional materials provided by the user in <documents> to answer.
+                - The names of the files provided by the user will be listed within the <file> tag. The content of the files will be automatically selected and displayed in the <document> tag, so you should refer to this when responding.
+                
+                Important! You must think and respond in the language the user has asked in.
                 
                 The following is an example.
                 <example>
                 <documents>
                     (Additional materials provided by the user)
                 </documents>
+                <file>
+                    (Additional file name list provided by the user)
+                </file>
                 <user>
                     (A user's question)
                 </user>
