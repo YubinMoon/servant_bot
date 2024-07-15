@@ -42,7 +42,10 @@ class BasicPrompt(BaseChatPromptTemplate):
         for message in previous_messages[-self.min_history_messages :][::-1]:
             if min_history_tokens + min_relevant_tokens > rest_tokens:
                 break
-            if not isinstance(message.content, list):
+            if isinstance(message.content, list):
+                for content in message.content:
+                    min_history_tokens += get_token_count(str(content.get("text", "")))
+            else:
                 min_history_tokens += get_token_count(str(message.content))
 
         relevant_memory_tokens = self.get_relevant_tokens(relevant_memory)
@@ -56,7 +59,11 @@ class BasicPrompt(BaseChatPromptTemplate):
         historical_messages: list[BaseMessage] = []
         historical_tokens = 0
         for message in previous_messages[-15:][::-1]:
-            if not isinstance(message.content, list):
+
+            if isinstance(message.content, list):
+                for content in message.content:
+                    historical_tokens += get_token_count(str(content.get("text", "")))
+            else:
                 historical_tokens += get_token_count(str(message.content))
             if historical_tokens > rest_tokens:
                 break
