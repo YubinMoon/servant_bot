@@ -44,7 +44,7 @@ async def _retrieve(
 
 async def _agent(state: BasicState, config: RunnableConfig, model: BaseChatModel):
     prompt = BasicPrompt()
-    chain = prompt | model.with_config(tags=["final_node"])
+    chain = prompt | model.with_config(tags=["agent_node"])
     result = await chain.ainvoke(state, config=config)
     return {"messages": result}
 
@@ -56,7 +56,7 @@ def get_basic_app(
     if "gpt" in model:
         _model = ChatOpenAI(model=model, streaming=True, stream_usage=True)
     elif "claude" in model:
-        model = ChatAnthropic(model=model, streaming=True, stream_usage=True)
+        _model = ChatAnthropic(model=model, streaming=True, stream_usage=True)
     else:
         raise ValueError(f"Invalid model '{model}'")
 

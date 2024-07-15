@@ -3,7 +3,7 @@ from textwrap import dedent
 from typing import Any, Callable, List
 
 from langchain_core.documents import Document
-from langchain_core.messages import BaseMessage, SystemMessage
+from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from langchain_core.prompts.chat import BaseChatPromptTemplate
 
 from utils.chat import get_token_count
@@ -52,7 +52,7 @@ class BasicPrompt(BaseChatPromptTemplate):
             relevant_memory = relevant_memory[:-1]
             relevant_memory_tokens = self.get_relevant_tokens(relevant_memory)
         relevant_contents = self.get_relevant_contents(relevant_memory)
-        memory_message = SystemMessage(content=relevant_contents)
+        memory_message = HumanMessage(content=relevant_contents)
         rest_tokens -= get_token_count(str(memory_message.content))
 
         historical_messages: list[BaseMessage] = []

@@ -31,8 +31,8 @@ class NewChatHandler(BaseCommandHandler):
 
         await new_msg.edit(content=f"새 쓰래드를 시작했어요. (key={key})")
         await thread.send(self.get_welcome_text())
-        await thread.send(content="모델을 선택해주세요.", view=ModelSelectView())
-        self.logger.info(f"new chat thread created by {self.author.name}, key={key}")
+        # await thread.send(content="모델을 선택해주세요.", view=ModelSelectView())
+        # self.logger.info(f"new chat thread created by {self.author.name}, key={key}")
 
     async def check_channel_type(self) -> None:
         if self.context.channel.type is not ChannelType.text:

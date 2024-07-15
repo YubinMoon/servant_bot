@@ -25,7 +25,7 @@ class ServantBot(commands.Bot):
     async def load_db(self) -> None:
         try:
             async with get_async_redis() as db:
-                db.ping()
+                await db.ping()
             self.logger.info("Connected to the Redis server")
         except:
             self.logger.error("Failed to connect to the Redis server")
