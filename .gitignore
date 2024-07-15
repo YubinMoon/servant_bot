@@ -144,7 +144,7 @@ cython_debug/
 .idea/*
 
 # SQLITE database
-*.db
+*.db*
 
 # REDIS database
 dump.rdb

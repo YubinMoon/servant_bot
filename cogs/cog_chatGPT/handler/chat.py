@@ -1,3 +1,4 @@
+import base64
 from textwrap import dedent
 from typing import TYPE_CHECKING
 
@@ -6,14 +7,9 @@ from langchain_core.messages import AIMessageChunk, AnyMessage, HumanMessage
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from typing_extensions import TypedDict
 
-from database.chat import get_thread_info
-from database.user import get_used_tokens, set_used_tokens
-from error.chat import NoAITypeError
 from utils.chat import get_token_count
 from utils.logger import get_logger
 
-from ..chat.agent import get_agent_by_name
-from ..chat.callback import CalcTokenCallback, ChatCallback
 from ..chat.graph import get_basic_app
 from ..chat.manager import DiscordManager
 from ..chat.memory import get_memory
@@ -96,14 +92,21 @@ class ChatHandler(BaseMessageHandler):
         return ContentData(**result)
 
     async def get_message(self) -> list[AnyMessage]:
-        file_names = await self.load_attachments()
-        content = ""
+        file_names = await self.load_text_attachments()
+        media_contents = await self.load_media_attachments()
+        contents = []
         if file_names:
-            content += f"<file>\n{file_names}\n</file>\n"
-        content += f"<user>\n{self.message.content}\n</user>"
-        return [HumanMessage(content=content)]
+            contents.append(
+                {"type": "text", "text": f"<file>\n{file_names}\n</file>\n"}
+            )
+        if media_contents:
+            contents.extend(media_contents)
+        contents.append(
+            {"type": "text", "text": f"<user>\n{self.message.content}\n</user>"}
+        )
+        return [HumanMessage(content=contents)]
 
-    async def load_attachments(self):
+    async def load_text_attachments(self):
         text_file_types = (
             "text/",
             "application/json",
@@ -116,10 +119,23 @@ class ChatHandler(BaseMessageHandler):
             file_type = attachment.content_type.split()[0]
             if file_type.startswith(text_file_types):
                 await self._load_text_file(attachment)
+            elif file_type.startswith("image/"):
+                await self._load_image_file(attachment)
             else:
                 continue
             file_names.append(attachment.filename)
         return file_names
+
+    async def load_media_attachments(self):
+        contents = []
+        for attachment in self.message.attachments:
+            file_type = attachment.content_type.split()[0]
+            if file_type.startswith("image/"):
+                content = await self._load_image_file(attachment)
+            else:
+                continue
+            contents.append(content)
+        return contents
 
     async def _load_text_file(self, attachment: "Attachment"):
         contents = await attachment.read()
@@ -129,6 +145,16 @@ class ChatHandler(BaseMessageHandler):
             metadata={"source": attachment.filename, "page": 0},
         )
         await self._insert_content([document])
+
+    async def _load_image_file(self, attachment: "Attachment"):
+        image_data = await attachment.read()
+        img_base64 = base64.b64encode(image_data).decode()
+        return {
+            "type": "image_url",
+            "image_url": {
+                "url": f"data:image/png;base64,{img_base64}",
+            },
+        }
 
     async def _insert_content(self, documents: "list[Document]"):
         total_token = 0
