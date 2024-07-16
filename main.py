@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 from bot import ServantBot
 
-load_dotenv()
+load_dotenv(override=True)
 
 if not os.path.isfile(f"{os.path.realpath(os.path.dirname(__file__))}/config.json"):
     sys.exit("'config.json' not found! Please add it and try again.")
