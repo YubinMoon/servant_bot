@@ -86,6 +86,7 @@ class BasicPrompt(BaseChatPromptTemplate):
                 - The final answer you provide to the user should be output within the <answer> tag.
                 - You can use the additional materials provided by the user in <documents> to answer.
                 - The names of the files provided by the user will be listed within the <file> tag. The content of the files will be automatically selected and displayed in the <document> tag, so you should refer to this when responding.
+                - You must think before you invoke the tool.
                 
                 Important! You must think and respond in the language the user has asked in.
                 
