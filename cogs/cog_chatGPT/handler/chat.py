@@ -70,7 +70,6 @@ class ChatHandler(BaseMessageHandler):
                     await self.discord.done_message(answer)
                     await self.discord.send_tool_message(output.tool_calls)
                     self.add_usage(output.usage_metadata)
-                    logger.info("chat done")
                     logger.debug(f"answer:\n{output.content}")
 
         logger.info(f"{self.message.author} - token usage: {self.usage}")
