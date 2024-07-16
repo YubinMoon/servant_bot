@@ -1,5 +1,6 @@
 from .base import ToolBase
 from .tavily_search import TavilySearch
+from .web_summarize import summarize_web
 
 
 def get_all_tools() -> list[ToolBase]:
