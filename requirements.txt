@@ -17,3 +17,4 @@ redisvl
 pypdf
 pydantic
 aiosqlite
+beautifulsoup4

@@ -6,16 +6,22 @@ from langchain_core.documents import Document
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage
 from langchain_core.runnables import RunnableConfig
+from langchain_core.tools import BaseTool
 from langchain_core.vectorstores import VectorStore
 from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.aiosqlite import AsyncSqliteSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import AnyMessage, add_messages
+from langgraph.prebuilt import ToolNode, tools_condition
 from sqlalchemy import true
 from typing_extensions import TypedDict
 
+from utils.logger import get_logger
+
 from ..checkpoint import RedisSaver
 from ..prompt import BasicPrompt
+
+logger = get_logger(__name__)
 
 
 class BasicState(TypedDict):
@@ -52,6 +58,7 @@ async def _agent(state: BasicState, config: RunnableConfig, model: BaseChatModel
 def get_basic_app(
     model: Literal["gpt-4o", "claude-3-5-sonnet-20240620"],
     memory: Optional[VectorStore] = None,
+    tools: Optional[BaseTool] = None,
 ):
     if "gpt" in model:
         _model = ChatOpenAI(model=model, streaming=True, stream_usage=True)
@@ -59,6 +66,9 @@ def get_basic_app(
         _model = ChatAnthropic(model=model, streaming=True, stream_usage=True)
     else:
         raise ValueError(f"Invalid model '{model}'")
+
+    if tools:
+        _model = _model.bind_tools(tools)
 
     graph_builder = StateGraph(BasicState)
 
@@ -70,7 +80,12 @@ def get_basic_app(
 
     graph_builder.add_edge(START, "retrieve")
     graph_builder.add_edge("retrieve", "agent")
-    graph_builder.add_edge("agent", END)
+    if tools:
+        graph_builder.add_node("tools", ToolNode(tools))
+        graph_builder.add_conditional_edges("agent", tools_condition)
+        graph_builder.add_edge("tools", "agent")
+    else:
+        graph_builder.add_edge("agent", END)
 
     checkpoint = AsyncSqliteSaver.from_conn_string("database/sqlite/checkpoint.db")
     # checkpoint = None

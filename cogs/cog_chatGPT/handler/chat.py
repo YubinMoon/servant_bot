@@ -1,9 +1,9 @@
 import base64
 from textwrap import dedent
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from langchain_core.documents import Document
-from langchain_core.messages import AIMessageChunk, AnyMessage, HumanMessage
+from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, HumanMessage
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from typing_extensions import TypedDict
 
@@ -13,6 +13,7 @@ from utils.logger import get_logger
 from ..chat.graph import get_basic_app
 from ..chat.manager import DiscordManager
 from ..chat.memory import get_memory
+from ..chat.tool import summarize_web
 from .base import BaseMessageHandler
 
 if TYPE_CHECKING:
@@ -39,15 +40,17 @@ class ChatHandler(BaseMessageHandler):
             length_function=get_token_count,
         )
         self.memory = get_memory(self.channel)
+        self.usage = {}
 
     async def action(self):
-        app = get_basic_app("claude-3-5-sonnet-20240620", self.memory)
+        # app = get_basic_app("gpt-4o", self.memory, [get_weather])
+        app = get_basic_app("claude-3-5-sonnet-20240620", self.memory, [summarize_web])
 
         messages = await self.get_message()
         _input = {"messages": messages}
         logger.debug(f"user input: {_input}")
         config = {"configurable": {"thread_id": self.key}}
-        result = AIMessageChunk(content="")
+        result = None
         async with self.channel.typing():
             async for event in app.astream_events(_input, config=config, version="v2"):
                 kind = event["event"]
@@ -55,14 +58,31 @@ class ChatHandler(BaseMessageHandler):
                 if kind == "on_chat_model_stream" and "agent_node" in tags:
                     data = event["data"]
                     if data["chunk"]:
-                        result += data["chunk"]
+                        chunk: AIMessageChunk = data["chunk"]
+                        result = chunk if not result else result + chunk
                         answer = self.chunk_parser(result)
                         await self.discord.send_message(answer)
-        logger.debug(f"answer: {result.content}")
-        logger.info(f"{self.message.author} - token usage: {result.usage_metadata}")
+                elif kind == "on_chat_model_end" and "agent_node" in tags:
+                    result = None
+                    data = event["data"]
+                    output: AIMessage = data["output"]
+                    answer = self.chunk_parser(output)
+                    await self.discord.done_message(answer)
+                    await self.discord.send_tool_message(output.tool_calls)
+                    self.add_usage(output.usage_metadata)
+                    logger.info("chat done")
+                    logger.debug(f"answer:\n{output.content}")
+
+        logger.info(f"{self.message.author} - token usage: {self.usage}")
 
     def chunk_parser(self, chunk: AIMessageChunk) -> str:
-        content_data = self.content_parser(chunk.content)
+        if isinstance(chunk.content, str):
+            content_data = self.content_parser(chunk.content)
+        else:
+            text = ""
+            for content in chunk.content:
+                text += content.get("text", "")
+            content_data = self.content_parser(text)
         return content_data.get("answer", "")
 
     def content_parser(self, content: str) -> ContentData:
@@ -171,3 +191,11 @@ class ChatHandler(BaseMessageHandler):
                 """
             )
         )
+
+    def add_usage(self, usage: Optional[dict]):
+        if usage:
+            for key in usage:
+                if key in self.usage:
+                    self.usage[key] += usage[key]
+                else:
+                    self.usage[key] = usage[key]
