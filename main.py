@@ -9,20 +9,6 @@ from bot import ServantBot
 
 load_dotenv(override=True)
 
-if not os.path.isfile(f"{os.path.realpath(os.path.dirname(__file__))}/config.json"):
-    base_config = {
-        "prefix": "!",
-        "invite_link": "",
-        "default_token_balance": 100000,
-    }
-    with open(
-        f"{os.path.realpath(os.path.dirname(__file__))}/config.json", "w"
-    ) as file:
-        json.dump(base_config, file, indent=4)
-
-with open(f"{os.path.realpath(os.path.dirname(__file__))}/config.json") as file:
-    config = json.load(file)
-
 """	
 Setup bot intents (events restrictions)
 For more information about intents, please go to the following websites:
@@ -69,5 +55,5 @@ intents.members = True
 intents.presences = True
 
 
-bot = ServantBot(intents=intents, config=config)
+bot = ServantBot(intents=intents)
 bot.run(os.getenv("TOKEN", ""))

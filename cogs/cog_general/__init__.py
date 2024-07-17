@@ -9,6 +9,7 @@ from discord.ext import commands
 from discord.ext.commands import Context
 
 from bot import ServantBot
+from config import config
 from utils.command import get_command_description, get_group_command_description
 from utils.logger import get_logger
 
@@ -16,7 +17,6 @@ from utils.logger import get_logger
 class General(commands.Cog, name="general"):
     def __init__(self, bot: ServantBot) -> None:
         self.bot = bot
-        self.config = bot.config
         self.logger = get_logger("general")
 
         self._restrict = False
@@ -25,7 +25,7 @@ class General(commands.Cog, name="general"):
 
     @commands.hybrid_command(name="help", description="모든 명령어를 보여줍니다.")
     async def help(self, context: Context) -> None:
-        prefix = self.bot.config["prefix"]
+        prefix = config["prefix"]
         embed = discord.Embed(
             title="Help", description="List of available commands:", color=0xBEBEFE
         )
@@ -68,7 +68,7 @@ class General(commands.Cog, name="general"):
         )
         embed.add_field(
             name="Prefix:",
-            value=f"/ (Slash Commands) or {self.bot.config['prefix']} for normal commands",
+            value=f"/ (Slash Commands) or {config['prefix']} for normal commands",
             inline=False,
         )
         embed.set_footer(text=f"Requested by {context.author}")
@@ -117,7 +117,7 @@ class General(commands.Cog, name="general"):
     )
     async def invite(self, context: Context) -> None:
         embed = discord.Embed(
-            description=f"저를 서버에 초대해 주세요. [클릭]({self.bot.config['invite_link']}).",
+            description=f"저를 서버에 초대해 주세요. [클릭]({config['invite_link']}).",
             color=0xD75BF4,
         )
         try:
