@@ -8,19 +8,19 @@ import discord
 from discord.ext import commands, tasks
 from discord.ext.commands import Context
 
+from config import config
 from database import get_async_redis
 from utils.logger import get_logger
 
 
 class ServantBot(commands.Bot):
-    def __init__(self, intents: discord.Intents, config) -> None:
+    def __init__(self, intents: discord.Intents) -> None:
         super().__init__(
             command_prefix=commands.when_mentioned_or(config["prefix"]),
             intents=intents,
             help_command=None,
         )
         self.logger = get_logger("servant_bot")
-        self.config = config
 
     async def load_db(self) -> None:
         try:
