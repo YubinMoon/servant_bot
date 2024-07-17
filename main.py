@@ -10,10 +10,18 @@ from bot import ServantBot
 load_dotenv(override=True)
 
 if not os.path.isfile(f"{os.path.realpath(os.path.dirname(__file__))}/config.json"):
-    sys.exit("'config.json' not found! Please add it and try again.")
-else:
-    with open(f"{os.path.realpath(os.path.dirname(__file__))}/config.json") as file:
-        config = json.load(file)
+    base_config = {
+        "prefix": "!",
+        "invite_link": "",
+        "default_token_balance": 100000,
+    }
+    with open(
+        f"{os.path.realpath(os.path.dirname(__file__))}/config.json", "w"
+    ) as file:
+        json.dump(base_config, file, indent=4)
+
+with open(f"{os.path.realpath(os.path.dirname(__file__))}/config.json") as file:
+    config = json.load(file)
 
 """	
 Setup bot intents (events restrictions)
