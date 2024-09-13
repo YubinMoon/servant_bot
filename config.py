@@ -9,6 +9,12 @@ class Config:
     invite_link = ""
     default_token_balance = 100000
 
+    monitor = {
+        "id": "",
+        "guild": "",
+        "channel": "",
+    }
+
     _instance = None
 
     def __new__(cls):
