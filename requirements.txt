@@ -6,11 +6,12 @@ hiredis
 redis
 tiktoken
 langgraph
+langgraph-checkpoint-sqlite
 langchain
 langchain-openai
 langchain-anthropic
-wikipedia
 langchain-google-community
+wikipedia
 python-magic
 lxml
 redisvl 
