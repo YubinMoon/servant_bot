@@ -43,10 +43,9 @@ class ChatHandler(BaseMessageHandler):
         self.usage = {}
 
     async def action(self):
-        # app = get_basic_app("gpt-4o", self.memory, [get_weather])
-        app = get_basic_app("claude-3-5-sonnet-20240620", self.memory, [summarize_web])
+        app = get_basic_app("chatgpt-4o-latest", self.memory, [])
 
-        messages = await self.get_message()
+        messages = await self.get_user_message()
         _input = {"messages": messages}
         logger.debug(f"user input: {_input}")
         config = {"configurable": {"thread_id": self.key}}
@@ -110,7 +109,7 @@ class ChatHandler(BaseMessageHandler):
             result[current_tag] = current_text.strip()
         return ContentData(**result)
 
-    async def get_message(self) -> list[AnyMessage]:
+    async def get_user_message(self) -> list[AnyMessage]:
         file_names = await self.load_text_attachments()
         media_contents = await self.load_media_attachments()
         contents = []

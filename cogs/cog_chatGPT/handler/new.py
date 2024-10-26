@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from discord.ext.commands import Context
 
     from bot import ServantBot
+
 logger = get_logger(__name__)
 
 
@@ -26,11 +27,11 @@ class NewChatHandler(BaseCommandHandler):
         await self.check_channel_type()
         new_msg = await self.context.send(f"새 쓰래드를 시작할게요.")
         thread = await new_msg.create_thread(
-            name="chat with GPT", auto_archive_duration=60, reason="new chat"
+            name="new Ai_chat channel", auto_archive_duration=60, reason="new chat"
         )
         key = generate_key(str(thread.id), 6)
 
-        await new_msg.edit(content=f"새 쓰래드를 시작했어요. (key={key})")
+        await new_msg.edit(content=f"새 채팅을 시작했어요.")
         await thread.send(self.get_welcome_text())
         logger.info(f"new chat thread created by {self.author.name}, key={key}")
 

@@ -10,9 +10,9 @@ class Config:
     default_token_balance = 100000
 
     monitor = {
-        "id": "",
-        "name": "",
-        "channel": "",
+        "id": "0",
+        "name": "test_name",
+        "channel": "0",
     }
 
     _instance = None
