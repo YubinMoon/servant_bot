@@ -11,7 +11,7 @@ class Config:
 
     monitor = {
         "id": "",
-        "guild": "",
+        "name": "",
         "channel": "",
     }
 
