@@ -56,7 +56,7 @@ async def _agent(state: BasicState, config: RunnableConfig, model: BaseChatModel
 
 
 def get_basic_app(
-    model: Literal["gpt-4o", "claude-3-5-sonnet-20240620"],
+    model: Literal["gpt-4o", "chatgpt-4o-latest", "claude-3-5-sonnet-20240620"],
     memory: Optional[VectorStore] = None,
     tools: Optional[BaseTool] = None,
 ):

@@ -1,8 +1,9 @@
 import asyncio
+import io
 from collections import deque
 from typing import TYPE_CHECKING
 
-from discord import Embed
+from discord import Embed, File
 from langchain_core.tools import ToolCall
 
 from utils import color
@@ -26,17 +27,25 @@ class DiscordManager:
         self.is_running = False
 
     async def send_message(self, content: str):
-        self.new_content = content
+        self.new_content = content[:1500] + "..." if len(content) > 1500 else content
         if not self.is_running and self.sended_content != self.new_content:
             self.is_running = True
             logger.debug("new send process start")
             asyncio.create_task(self._semd_process())
 
     async def done_message(self, content: str):
-        self.new_content = content
+        self.new_content = content[:1500] + "..." if len(content) > 1500 else content
         while self.is_running:
             await asyncio.sleep(0.1)
-        if self.sended_content != self.new_content:
+
+        if len(content) > 1500:
+            logger.debug("large content send process start")
+            _file = io.BytesIO(content.encode("utf-8"))
+            await self.chat_message.edit(
+                content="메시지가 너무 길어 파일로 전송합니다.",
+                attachments=[File(_file, filename="answer.txt")],
+            )
+        elif self.sended_content != self.new_content:
             logger.debug("done send process start")
             asyncio.create_task(self._semd_process())
         self.chat_message = None
@@ -58,6 +67,7 @@ class DiscordManager:
 
     async def _semd_process(self):
         while self.sended_content != self.new_content:
+
             self.sended_content = self.new_content
             if self.chat_message is None:
                 self.chat_message = await self.thread.send(content=self.sended_content)
