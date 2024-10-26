@@ -5,6 +5,9 @@ services:
         depends_on:
             - redis
 
+        volumes:
+            - ./database/sqlite:/app/database/sqlite
+
     redis:
         image: redis/redis-stack:latest
         restart: always

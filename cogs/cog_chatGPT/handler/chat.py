@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Optional
 from langchain_core.documents import Document
 from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, HumanMessage
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from typing_extensions import TypedDict
 
 from utils.chat import get_token_count
@@ -43,7 +44,7 @@ class ChatHandler(BaseMessageHandler):
         self.usage = {}
 
     async def action(self):
-        app = get_basic_app("chatgpt-4o-latest", self.memory, [])
+        graph_builder = get_basic_app("chatgpt-4o-latest", self.memory, [])
 
         messages = await self.get_user_message()
         _input = {"messages": messages}
@@ -51,25 +52,31 @@ class ChatHandler(BaseMessageHandler):
         config = {"configurable": {"thread_id": self.key}}
         result = None
         async with self.channel.typing():
-            async for event in app.astream_events(_input, config=config, version="v2"):
-                kind = event["event"]
-                tags = event.get("tags", [])
-                if kind == "on_chat_model_stream" and "agent_node" in tags:
-                    data = event["data"]
-                    if data["chunk"]:
-                        chunk: AIMessageChunk = data["chunk"]
-                        result = chunk if not result else result + chunk
-                        answer = self.chunk_parser(result)
-                        await self.discord.send_message(answer)
-                elif kind == "on_chat_model_end" and "agent_node" in tags:
-                    result = None
-                    data = event["data"]
-                    output: AIMessage = data["output"]
-                    answer = self.chunk_parser(output)
-                    await self.discord.done_message(answer)
-                    await self.discord.send_tool_message(output.tool_calls)
-                    self.add_usage(output.usage_metadata)
-                    logger.debug(f"answer:\n{output.content}")
+            async with AsyncSqliteSaver.from_conn_string(
+                "database/sqlite/checkpoint.db"
+            ) as memory:
+                app = graph_builder.compile(checkpointer=memory)
+                async for event in app.astream_events(
+                    _input, config=config, version="v2"
+                ):
+                    kind = event["event"]
+                    tags = event.get("tags", [])
+                    if kind == "on_chat_model_stream" and "agent_node" in tags:
+                        data = event["data"]
+                        if data["chunk"]:
+                            chunk: AIMessageChunk = data["chunk"]
+                            result = chunk if not result else result + chunk
+                            answer = self.chunk_parser(result)
+                            await self.discord.send_message(answer)
+                    elif kind == "on_chat_model_end" and "agent_node" in tags:
+                        result = None
+                        data = event["data"]
+                        output: AIMessage = data["output"]
+                        answer = self.chunk_parser(output)
+                        await self.discord.done_message(answer)
+                        await self.discord.send_tool_message(output.tool_calls)
+                        self.add_usage(output.usage_metadata)
+                        logger.debug(f"answer:\n{output.content}")
 
         logger.info(f"{self.message.author} - token usage: {self.usage}")
 

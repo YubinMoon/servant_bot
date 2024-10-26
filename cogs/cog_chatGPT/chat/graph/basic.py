@@ -87,6 +87,8 @@ def get_basic_app(
     else:
         graph_builder.add_edge("agent", END)
 
+    return graph_builder
+
     checkpoint = AsyncSqliteSaver.from_conn_string("database/sqlite/checkpoint.db")
     # checkpoint = None
 
