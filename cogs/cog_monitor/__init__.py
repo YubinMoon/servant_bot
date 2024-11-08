@@ -71,12 +71,15 @@ class Monitor(commands.Cog, name="monitor"):
                 elif after.desktop_status == discord.Status.offline:
                     logger.info(f"{self.target_name} 컴퓨터 오프라인 검거")
                     if data["status"] == "online":
+                        data["status"] = "offline"
                         data["end_time"] = datetime.now()
                         if data.get("alerted", False):
-                            await self.alert_end(channel)
+                            await self.alert_end(channel, data)
 
-            if before.activity == None or after.activity != None:
-                if data["status"] == "online" and not data.get("alerted", False):
+            if before.activity == None and after.activity != None:
+                if data.get("status", "offline") == "online" and not data.get(
+                    "alerted", False
+                ):
                     logger.info(f"{self.target_name} 몰컴 검거")
                     await self.alert_start(channel)
                     data["alerted"] = True
