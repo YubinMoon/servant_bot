@@ -75,6 +75,7 @@ class Monitor(commands.Cog, name="monitor"):
                         data["end_time"] = datetime.now()
                         if data.get("alerted", False):
                             await self.alert_end(channel, data)
+                            data["alerted"] = False
 
             if before.activity == None and after.activity != None:
                 if data.get("status", "offline") == "online" and not data.get(
