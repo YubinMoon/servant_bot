@@ -1,7 +1,7 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import discord
-from discord import Embed, Guild, TextChannel, app_commands
+from discord import Guild, TextChannel, app_commands
 from discord.ext import commands
 from discord.ext.commands import Context
 
@@ -11,20 +11,17 @@ from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+UTC_9 = timezone(timedelta(hours=9))
+
 
 class Monitor(commands.Cog, name="monitor"):
     def __init__(self, bot: ServantBot) -> None:
         self.bot = bot
 
-        self._restrict = False
-
         self.target_id = int(config.monitor.get("id", "0"))
         self.target_name = config.monitor.get("name", "")
         self.channel_id = int(config.monitor.get("channel", "0"))
         self.target_guild: dict[int, dict] = {}
-
-        self._start_time_val = datetime.now()
-        self._start_time_lol = datetime.now()
 
     @commands.hybrid_command(
         name="monitoring",
@@ -66,13 +63,13 @@ class Monitor(commands.Cog, name="monitor"):
             if before.desktop_status != after.desktop_status:
                 if after.desktop_status == discord.Status.online:
                     logger.info(f"{self.target_name} 컴퓨터 온라인 검거")
-                    data["start_time"] = datetime.now()
+                    data["start_time"] = datetime.now(UTC_9)
                     data["status"] = "online"
                 elif after.desktop_status == discord.Status.offline:
                     logger.info(f"{self.target_name} 컴퓨터 오프라인 검거")
                     if data["status"] == "online":
                         data["status"] = "offline"
-                        data["end_time"] = datetime.now()
+                        data["end_time"] = datetime.now(UTC_9)
                         if data.get("alerted", False):
                             await self.alert_end(channel, data)
                             data["alerted"] = False
