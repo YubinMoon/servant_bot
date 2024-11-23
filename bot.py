@@ -9,7 +9,7 @@ from discord.ext import commands, tasks
 from discord.ext.commands import Context
 
 from config import config
-from database import get_async_redis
+from database import create_db_and_tables, get_async_redis
 from utils.logger import get_logger
 
 
@@ -23,6 +23,12 @@ class ServantBot(commands.Bot):
         self.logger = get_logger("servant_bot")
 
     async def load_db(self) -> None:
+        try:
+            create_db_and_tables()
+        except:
+            self.logger.error("Failed to create the database and tables")
+            self.logger.debug(traceback.format_exc())
+            sys.exit(1)
         try:
             async with get_async_redis() as db:
                 await db.ping()
@@ -86,8 +92,8 @@ class ServantBot(commands.Bot):
             f"Running on: {platform.system()} {platform.release()} ({os.name})"
         )
         self.logger.info("-------------------")
-        await self.load_db()
         await self.load_cogs()
+        await self.load_db()
         self.status_task.start()
 
     async def on_ready(self) -> None:
