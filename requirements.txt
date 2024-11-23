@@ -19,3 +19,4 @@ pypdf
 pydantic
 aiosqlite
 beautifulsoup4
+sqlmodel
