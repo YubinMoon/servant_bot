@@ -9,11 +9,11 @@ logger = get_logger(__name__)
 
 
 class NewTeamHandler(BaseHandler):
-    logger_name = "new_team_handler"
 
     def __init__(self, controller: NewTeamController, team_name: str = "") -> None:
-        self.controller = controller
         super().__init__(None, controller.context, team_name)
+        self.controller = controller
+        self.team_name = team_name
 
     async def action(self):
         message_id = await self.controller.setup_embed(name=self.team_name)
