@@ -5,10 +5,10 @@ import sys
 import traceback
 
 import discord
+from config import config
 from discord.ext import commands, tasks
 from discord.ext.commands import Context
 
-from config import config
 from database import create_db_and_tables, get_async_redis
 from utils.logger import get_logger
 
