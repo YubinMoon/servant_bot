@@ -1,76 +1,67 @@
-from typing import TYPE_CHECKING
+from datetime import datetime, timedelta
 
-from discord import Embed, NotFound
+from sqlalchemy.orm import selectinload
+from sqlmodel import select
 
-from error.team import AlreadyInTeamError, NoTeamError, NoTeamMessageError
-from utils import color
+from database import get_session
+from error.team import AlreadyInTeamError, NoTeamError, NoTeamSelectError
+from model.team import Member, Team
+from utils.logger import get_logger
 
+from ..controller import JoinTeamController
 from .base import BaseHandler
 
-if TYPE_CHECKING:
-    from discord import Message
-    from discord.ext.commands import Context
-
-    from bot import ServantBot
+logger = get_logger(__name__)
 
 
 class JoinTeamHandler(BaseHandler):
-    logger_name = "join_team_handler"
-
-    def __init__(
-        self, bot: "ServantBot", context: "Context", team_name: str = ""
-    ) -> None:
-        super().__init__(bot, context, team_name)
+    def __init__(self, controller: JoinTeamController) -> None:
+        super().__init__(None, controller.context, "")
+        self.controller = controller
 
     async def action(self) -> None:
-        # await self.check_members()
-        await self.db.add_member(self.author)
-        await self.update_message()
-        self.logger.info(
-            f"{self.author} (ID: {self.author.id}) joined the team {self.team_name}."
-        )
+        teams = self.get_team_list()
+        selected_team = await self.controller.get_team_name_from_view(teams)
+        if not selected_team:
+            logger.warn("No team is selected.")
+            return
+        self.add_member(selected_team)
+        updated_team = self.get_updated_team(selected_team)
+        await self.controller.update_message(updated_team)
 
-    async def check_members(self):
-        members = await self.db.get_members()
-        if self.author.id in members:
+    def get_team_list(self):
+        with get_session() as session:
+            teams = session.exec(
+                select(Team)
+                .options(selectinload(Team.members))
+                .where(Team.created_at > (datetime.now() - timedelta(days=1)))
+            ).all()
+        if not teams:
+            raise NoTeamError("Team is not found.")
+        return teams
+
+    def add_member(self, team: Team):
+        user_id = self.controller.user_id
+        user_name = self.controller.user_name
+        member_ids = [member.discord_id for member in team.members]
+
+        # check duplication
+        if self.controller.user_id in member_ids:
             raise AlreadyInTeamError(
-                f"{self.author} (ID: {self.author.id}) tried to join a team {self.team_name} that the user is already in.",
-                self.team_name,
+                f"{user_name} (ID: {user_id}) tried to join a team {team.name} that the user is already in.",
+                team.name,
             )
 
-    async def update_message(self) -> None:
-        message = await self.get_message()
-        await self.refresh_message(message)
-        await self.notify(message)
-
-    async def get_message(self):
-        message_id = await self.db.get_message_id()
-        if message_id is None:
-            raise NoTeamError("Team is not found.", self.team_name)
-
-        try:
-            message = await self.channel.fetch_message(message_id)
-        except NotFound as e:
-            raise NoTeamMessageError(
-                "Team Create message is not found.", self.team_name
-            )
-        return message
-
-    async def refresh_message(self, message: "Message") -> None:
-        members = await self.db.get_members()
-        if message.embeds == []:
-            raise NoTeamMessageError("Team Create embed is not found.", self.team_name)
-        embed = message.embeds[0]
-        embed.set_field_at(
-            index=0,
-            name=f"현제 인원: {len(members)}",
-            value=" - ".join([f"<@{member_id}>" for member_id in members]),
+        # add member
+        member = Member(discord_id=user_id, name=user_name, team_id=team.id)
+        with get_session() as session:
+            session.add(member)
+            session.commit()
+        logger.debug(
+            f"{user_name} (ID: {user_id}) joined the team {team.name} (ID: {team.id})."
         )
-        await message.edit(embed=embed)
 
-    async def notify(self, message: "Message"):
-        embed = Embed(
-            description=f"{self.author.mention}님이 **{self.team_name}**팀에 참가했어요. {message.jump_url}",
-            color=color.BASE,
-        )
-        await self.context.send(embed=embed)
+    def get_updated_team(self, team: Team) -> Team:
+        with get_session() as session:
+            new_team = session.get(Team, team.id, options=[selectinload(Team.members)])
+        return new_team

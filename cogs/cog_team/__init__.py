@@ -8,7 +8,7 @@ from utils.command import get_group_command_description
 from utils.hash import get_random_key
 from utils.logger import get_logger
 
-from .controller import NewTeamController
+from .controller import JoinTeamController, NewTeamController
 from .handler import (
     CancelTeamHandler,
     JoinTeamHandler,
@@ -39,7 +39,6 @@ class Team(commands.Cog, name="team"):
     @team.command(name="start", description="새로운 팀 생성")
     @app_commands.describe(name="팀 이름")
     async def start(self, context: "Context", name: str) -> None:
-        logger.info(f"name: {name}")
         controller = NewTeamController(context)
         await NewTeamHandler(controller, name).run()
         # await JoinTeamHandler(self.bot, context, name).run()
@@ -56,7 +55,8 @@ class Team(commands.Cog, name="team"):
     @team.command(name="join", description="생성된 팀에 참가")
     @app_commands.describe(name="팀 이름")
     async def join(self, context: "Context", name: str = "") -> None:
-        await JoinTeamHandler(self.bot, context, name).run()
+        controller = JoinTeamController(context)
+        await JoinTeamHandler(controller).run()
 
     @commands.guild_only()
     @commands.hybrid_command(
@@ -66,7 +66,7 @@ class Team(commands.Cog, name="team"):
     )
     @app_commands.describe(name="팀 이름")
     async def alias_join(self, context: "Context", name: str = "") -> None:
-        await self.join(context, name)
+        await self.join(context)
 
     @commands.guild_only()
     @team.command(name="cancel", description="팀 참가 취소")
