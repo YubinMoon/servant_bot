@@ -1,36 +1,27 @@
-from typing import TYPE_CHECKING
+from database import get_session
+from model.team import Member, Team
+from utils.logger import get_logger
 
-from discord import Embed
-
+from ..controller import NewTeamController
 from .base import BaseHandler
 
-if TYPE_CHECKING:
-    from discord import Message
-    from discord.ext.commands import Context
-
-    from bot import ServantBot
+logger = get_logger(__name__)
 
 
 class NewTeamHandler(BaseHandler):
     logger_name = "new_team_handler"
 
-    def __init__(
-        self, bot: "ServantBot", context: "Context", team_name: str = ""
-    ) -> None:
-        super().__init__(bot, context, team_name)
+    def __init__(self, controller: NewTeamController, team_name: str = "") -> None:
+        self.controller = controller
+        super().__init__(None, controller.context, team_name)
 
     async def action(self):
-        message = await self.setup_embed()
-        await self.db.new_team(message.id)
-        self.logger.info(f"created new team: {self.team_name} ({message.id})")
+        message_id = await self.controller.setup_embed(name=self.team_name)
+        await self.create_tteam(message_id)
+        logger.info(f"created new team: {self.team_name} ({message_id})")
 
-    async def setup_embed(self) -> "Message":
-        embed = Embed(
-            title=f"{self.team_name} 팀이 구성되었어요.",
-            description="**/j**로 등록... 하든가 말든가",
-            color=0xBEBEFE,
-        )
-        embed.add_field(name=f"현제 인원: 0", value="")
-        embed.set_footer(text="/s로 굴릴 수 있어요. /c로 팀 등록을 취소할 수 있어요.")
-        message = await self.context.send(embed=embed, silent=True)
-        return message
+    async def create_tteam(self, message_id):
+        with get_session() as session:
+            team = Team(name=self.team_name, message_id=message_id)
+            session.add(team)
+            session.commit()

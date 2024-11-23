@@ -8,6 +8,7 @@ from utils.command import get_group_command_description
 from utils.hash import get_random_key
 from utils.logger import get_logger
 
+from .controller import NewTeamController
 from .handler import (
     CancelTeamHandler,
     JoinTeamHandler,
@@ -22,48 +23,33 @@ if TYPE_CHECKING:
 
     from bot import ServantBot
 
+logger = get_logger(__name__)
+
 
 class Team(commands.Cog, name="team"):
     def __init__(self, bot: "ServantBot") -> None:
         self.bot = bot
-        self.logger = get_logger("team")
 
     @commands.guild_only()
-    @commands.hybrid_group(name="team")
+    @commands.hybrid_group(name="team", fallback="get")
     async def team(self, context: "Context") -> None:
-        prefix: str = self.bot.config["prefix"]
-        embed = discord.Embed(
-            description="명령어 리스트",
-            color=0xBEBEFE,
-        )
-        cog_commands = self.get_commands()
-        data = []
-        for group_command in cog_commands:
-            if (
-                isinstance(group_command, commands.core.Group)
-                and group_command.name == "team"
-            ):
-                for command in group_command.commands:
-                    data.append(get_group_command_description(prefix, "team", command))
-        help_text = "\n".join(data)
-        embed.add_field(name="Team", value=f"```{help_text}```", inline=False)
-        await context.send(embed=embed, ephemeral=True)
+        pass
 
     @commands.guild_only()
     @team.command(name="start", description="새로운 팀 생성")
     @app_commands.describe(name="팀 이름")
-    async def start(self, context: "Context", name: str = "") -> None:
-        if name == "":
-            name = get_random_key(6)
-        await NewTeamHandler(self.bot, context, name).run()
-        await JoinTeamHandler(self.bot, context, name).run()
+    async def start(self, context: "Context", name: str) -> None:
+        logger.info(f"name: {name}")
+        controller = NewTeamController(context)
+        await NewTeamHandler(controller, name).run()
+        # await JoinTeamHandler(self.bot, context, name).run()
 
     @commands.guild_only()
     @commands.hybrid_command(
         name="q", description="새로운 팀 생성", aliases=["ㅋ", "큐"]
     )
     @app_commands.describe(name="팀 이름")
-    async def alias_start(self, context: "Context", name: str = "") -> None:
+    async def alias_start(self, context: "Context", name: str) -> None:
         await self.start(context, name)
 
     @commands.guild_only()

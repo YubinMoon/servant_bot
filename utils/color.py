@@ -1,2 +1,7 @@
 BASE = 0xBEBEFE
 ERROR = 0xE02B2B
+
+
+class Colors:
+    BASE = 0xBEBEFE
+    ERROR = 0xE02B2B

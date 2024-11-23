@@ -19,7 +19,7 @@ class BaseHandler:
 
     def __init__(
         self,
-        bot: "ServantBot",
+        bot: "ServantBot|None",
         context: "Context",
         team_name: str,
     ) -> None:
