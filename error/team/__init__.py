@@ -32,6 +32,23 @@ class NoTeamError(TeamBaseError):
         return embed
 
 
+class NoTeamSelectError(TeamBaseError):
+    def __init__(
+        self,
+        message: str,
+    ) -> None:
+        super().__init__(message)
+
+    def get_embed(self):
+        title = "팀이 선택되지 않았어요."
+        embed = Embed(
+            title=title,
+            description="**/j**로 팀을 먼저 선택해 주세요.",
+            color=color.ERROR,
+        )
+        return embed
+
+
 class NoTeamMessageError(TeamBaseError):
     def __init__(self, message: str, team_name: str = ""):
         super().__init__(message)
