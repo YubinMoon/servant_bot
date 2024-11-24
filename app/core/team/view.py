@@ -1,7 +1,7 @@
 import discord
 from discord import ui
 
-from model.team import Team
+from ..model.team import Team
 
 
 class TeamButton(ui.Button["JoinTeamSelectView"]):

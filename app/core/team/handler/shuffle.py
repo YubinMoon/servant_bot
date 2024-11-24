@@ -3,16 +3,14 @@ from typing import TYPE_CHECKING
 
 from discord import Embed
 
-from error.team import MemberNumError
-from utils import color
-
+from ....common.utils import color
+from ...error.team import MemberNumError
 from .base import BaseHandler
 
 if TYPE_CHECKING:
+    from bot import ServantBot
     from discord import Member
     from discord.ext.commands import Context
-
-    from bot import ServantBot
 
 
 class ShuffleTeamHandler(BaseHandler):

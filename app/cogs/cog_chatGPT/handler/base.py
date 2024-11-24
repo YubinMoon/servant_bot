@@ -1,14 +1,14 @@
 from typing import TYPE_CHECKING
 
 from error.chat import ChatBaseError
-from utils.hash import generate_key
-from utils.logger import get_logger
+
+from ....common.logger import get_logger
+from ....common.utils.hash import generate_key
 
 if TYPE_CHECKING:
+    from bot import ServantBot
     from discord import Embed, Message
     from discord.ext.commands import Context
-
-    from bot import ServantBot
 
 
 class BaseHandler:

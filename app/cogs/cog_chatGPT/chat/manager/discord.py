@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 from discord import Embed, File
 from langchain_core.messages.tool import ToolCall
 
-from utils import color
-from utils.logger import get_logger
+from .....common.logger import get_logger
+from .....common.utils import color
 
 if TYPE_CHECKING:
     from discord import Message, Thread

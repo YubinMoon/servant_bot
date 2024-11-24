@@ -3,15 +3,13 @@ from typing import TYPE_CHECKING
 from discord import ChannelType
 from discord.ext import commands
 
-from utils.logger import get_logger
-
+from ...common.logger import get_logger
 from .handler import ChatHandler, NewChatHandler
 
 if TYPE_CHECKING:
+    from bot import ServantBot
     from discord import Message
     from discord.ext.commands import Context
-
-    from bot import ServantBot
 
 
 class ChatGPT(commands.Cog, name="chatGPT"):

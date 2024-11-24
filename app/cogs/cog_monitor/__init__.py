@@ -5,9 +5,9 @@ from discord import Guild, TextChannel, app_commands
 from discord.ext import commands
 from discord.ext.commands import Context
 
-from bot import ServantBot
-from config import config
-from utils.logger import get_logger
+from ...bot import ServantBot
+from ...common.config import config
+from ...common.logger import get_logger
 
 logger = get_logger(__name__)
 

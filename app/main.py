@@ -3,7 +3,7 @@ import os
 import discord
 from dotenv import load_dotenv
 
-from bot import ServantBot
+from .bot import ServantBot
 
 load_dotenv(override=True)
 

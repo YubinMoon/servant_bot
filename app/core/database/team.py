@@ -1,8 +1,7 @@
 import json
 from typing import TYPE_CHECKING
 
-from utils.logger import get_logger
-
+from ...common.logger import get_logger
 from .base import get_async_redis
 
 if TYPE_CHECKING:

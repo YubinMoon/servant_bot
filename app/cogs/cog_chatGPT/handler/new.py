@@ -2,17 +2,16 @@ from textwrap import dedent
 from typing import TYPE_CHECKING
 
 from discord import ChannelType
-
 from error.chat import ChannelCreateError
 from utils.hash import generate_key
-from utils.logger import get_logger
+
+from app.common.logger import get_logger
 
 from .base import BaseCommandHandler
 
 if TYPE_CHECKING:
-    from discord.ext.commands import Context
-
     from bot import ServantBot
+    from discord.ext.commands import Context
 
 logger = get_logger(__name__)
 

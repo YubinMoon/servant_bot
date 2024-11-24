@@ -2,16 +2,14 @@ from typing import TYPE_CHECKING
 
 from discord import Embed
 
-from error.team import AlreadyOutTeamError
-from utils import color
-
+from ....common.utils import color
+from ...error.team import AlreadyOutTeamError
 from .join import JoinTeamHandler
 
 if TYPE_CHECKING:
+    from bot import ServantBot
     from discord import Message
     from discord.ext.commands import Context
-
-    from bot import ServantBot
 
 
 class CancelTeamHandler(JoinTeamHandler):

@@ -16,8 +16,7 @@ from langgraph.prebuilt import ToolNode, tools_condition
 from sqlalchemy import true
 from typing_extensions import TypedDict
 
-from utils.logger import get_logger
-
+from .....common.logger import get_logger
 from ..checkpoint import RedisSaver
 from ..prompt import BasicPrompt
 

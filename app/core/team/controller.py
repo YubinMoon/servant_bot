@@ -2,9 +2,9 @@ from typing import TYPE_CHECKING
 
 from discord import Embed, NotFound
 
-from error.team import NoTeamMessageError, NoTeamSelectError
-from model.team import Team
-from utils.color import Colors
+from ...common.utils.color import Colors
+from ..error.team import NoTeamMessageError, NoTeamSelectError
+from ..model.team import Team
 
 if TYPE_CHECKING:
     from discord.ext.commands import Context

@@ -7,8 +7,8 @@ from langchain_core.documents import Document
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from langchain_core.prompts.chat import BaseChatPromptTemplate
 
-from utils.chat import get_token_count
-from utils.logger import get_logger
+from .....common.logger import get_logger
+from .....common.utils.chat import get_token_count
 
 logger = get_logger(__name__)
 

@@ -3,15 +3,14 @@ from typing import TYPE_CHECKING
 
 from discord.ext import commands
 
-from database import TeamDataManager
-from error.team import NoTeamError, TeamBaseError
-from utils.logger import get_logger
+from ....common.logger import get_logger
+from ...database import TeamDataManager
+from ...error.team import NoTeamError, TeamBaseError
 
 if TYPE_CHECKING:
+    from bot import ServantBot
     from discord import Embed
     from discord.ext.commands import Context
-
-    from bot import ServantBot
 
 
 class BaseHandler:

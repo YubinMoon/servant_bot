@@ -2,15 +2,13 @@ from typing import TYPE_CHECKING
 
 import discord
 
-from error.team import RankMemberNumError
-
+from ...error.team import RankMemberNumError
 from .shuffle import ShuffleTeamHandler
 
 if TYPE_CHECKING:
+    from bot import ServantBot
     from discord import Member
     from discord.ext.commands import Context
-
-    from bot import ServantBot
 
 
 class TeamPredictHandler(ShuffleTeamHandler):

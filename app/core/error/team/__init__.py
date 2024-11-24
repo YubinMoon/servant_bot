@@ -1,6 +1,6 @@
 from discord import Embed
 
-from utils import color
+from ....common.utils import color
 
 
 class TeamBaseError(Exception):

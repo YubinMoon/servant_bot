@@ -6,7 +6,7 @@ from sqlmodel import Session, SQLModel, create_engine
 from .base import get_async_redis, get_sync_redis
 from .team import TeamDataManager
 
-sqlite_file_name = "database/test.db"
+sqlite_file_name = "test.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"
 
 connect_args = {"check_same_thread": False}

@@ -3,13 +3,13 @@ from datetime import datetime
 from time import time
 
 import discord
+from bot import ServantBot
 from discord.ext import commands
 from discord.ext.commands import Context
-
-from bot import ServantBot
-from config import config
 from utils.command import get_command_description, get_group_command_description
-from utils.logger import get_logger
+
+from app.common.config import config
+from app.common.logger import get_logger
 
 
 class General(commands.Cog, name="general"):

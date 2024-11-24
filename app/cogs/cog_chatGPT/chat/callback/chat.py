@@ -6,9 +6,9 @@ from langchain_core.callbacks.base import AsyncCallbackHandler
 from langchain_core.messages import BaseMessage
 from langchain_core.outputs.llm_result import LLMResult
 
-from utils import color
-from utils.hash import generate_key
-from utils.logger import get_logger
+from .....common.logger import get_logger
+from .....common.utils import color
+from .....common.utils.hash import generate_key
 
 if TYPE_CHECKING:
     from discord import Embed, Message

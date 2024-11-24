@@ -5,12 +5,13 @@ import sys
 import traceback
 
 import discord
-from config import config
 from discord.ext import commands, tasks
 from discord.ext.commands import Context
 
-from database import create_db_and_tables, get_async_redis
-from utils.logger import get_logger
+from .cogs import cog_list
+from .common.config import config
+from .common.logger import get_logger
+from .core.database import create_db_and_tables, get_async_redis
 
 
 class ServantBot(commands.Bot):
@@ -39,20 +40,16 @@ class ServantBot(commands.Bot):
             sys.exit(1)
 
     async def load_cogs(self) -> None:
-        """
-        The code in this function is executed whenever the bot will start.
-        """
-        for extension in os.listdir("cogs"):
-            if extension.startswith("cog_"):
-                try:
-                    await self.load_extension(f"cogs.{extension}")
-                    self.logger.info(f"Loaded extension '{extension}'")
-                except Exception as e:
-                    exception = f"{type(e).__name__}: {e}"
-                    self.logger.error(
-                        f"Failed to load extension {extension}\n{exception}"
-                    )
-                    self.logger.debug(traceback.format_exc())
+        for cog in cog_list:
+            try:
+                await self.add_cog(cog(self))
+                self.logger.info(f"Loaded extension '{cog.__name__}'")
+            except Exception as e:
+                exception = f"{type(e).__name__}: {e}"
+                self.logger.error(
+                    f"Failed to load extension {cog.__name__}\n{exception}"
+                )
+                self.logger.debug(traceback.format_exc())
 
     @tasks.loop(minutes=1.0)
     async def status_task(self) -> None:

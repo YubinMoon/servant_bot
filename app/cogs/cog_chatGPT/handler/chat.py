@@ -7,9 +7,9 @@ from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, Human
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from typing_extensions import TypedDict
-
 from utils.chat import get_token_count
-from utils.logger import get_logger
+
+from app.common.logger import get_logger
 
 from ..chat.graph import get_basic_app
 from ..chat.manager import DiscordManager
@@ -18,9 +18,8 @@ from ..chat.tool import summarize_web
 from .base import BaseMessageHandler
 
 if TYPE_CHECKING:
-    from discord import Attachment, Message
-
     from bot import ServantBot
+    from discord import Attachment, Message
 
 logger = get_logger(__name__)
 

@@ -1,15 +1,11 @@
 from typing import TYPE_CHECKING
 
-import discord
 from discord import app_commands
 from discord.ext import commands
 
-from utils.command import get_group_command_description
-from utils.hash import get_random_key
-from utils.logger import get_logger
-
-from .controller import JoinTeamController, NewTeamController
-from .handler import (
+from ..common.logger import get_logger
+from ..core.team.controller import JoinTeamController, NewTeamController
+from ..core.team.handler import (
     CancelTeamHandler,
     JoinTeamHandler,
     NewTeamHandler,
@@ -19,9 +15,8 @@ from .handler import (
 )
 
 if TYPE_CHECKING:
-    from discord.ext.commands import Context
-
     from bot import ServantBot
+    from discord.ext.commands import Context
 
 logger = get_logger(__name__)
 
@@ -131,7 +126,3 @@ class Team(commands.Cog, name="team"):
     @app_commands.describe(name="팀 이름")
     async def alias_predict(self, context: "Context", name: str = "") -> None:
         await self.predict(context, name)
-
-
-async def setup(bot: "ServantBot") -> None:
-    await bot.add_cog(Team(bot))
