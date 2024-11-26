@@ -7,7 +7,7 @@ from discord import Embed, File
 from langchain_core.messages.tool import ToolCall
 
 from .....common.logger import get_logger
-from .....common.utils import color
+from .....common.utils import Color
 
 if TYPE_CHECKING:
     from discord import Message, Thread
@@ -53,7 +53,7 @@ class DiscordManager:
     async def send_tool_message(self, tool_calls: list[ToolCall]):
         if tool_calls:
             self.called_tools.extend(tool_calls)
-            embed = Embed(title="기능 호출", color=color.BASE)
+            embed = Embed(title="기능 호출", color=Color.BASE)
             for tool in self.called_tools:
                 embed.add_field(
                     name=tool.get("name", ""),

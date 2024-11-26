@@ -4,15 +4,24 @@ from discord import app_commands
 from discord.ext import commands
 
 from ..common.logger import get_logger
-from ..core.team.controller import JoinTeamController, NewTeamController
+from ..core.database import get_session
+from ..core.error.team import TeamBaseError
+from ..core.team import controller
+from ..core.team.controller import (
+    CancelTeamController,
+    JoinTeamController,
+    ShuffleTeamController,
+    TeamInfoController,
+)
 from ..core.team.handler import (
-    CancelTeamHandler,
     JoinTeamHandler,
     NewTeamHandler,
     ShuffleTeamHandler,
     TeamInfoHandler,
-    TeamPredictHandler,
+    join,
+    new,
 )
+from ..core.team.handler.cancel import CancelTeamHandler
 
 if TYPE_CHECKING:
     from bot import ServantBot
@@ -34,9 +43,20 @@ class Team(commands.Cog, name="team"):
     @team.command(name="start", description="새로운 팀 생성")
     @app_commands.describe(name="팀 이름")
     async def start(self, context: "Context", name: str) -> None:
-        controller = NewTeamController(context)
-        await NewTeamHandler(controller, name).run()
-        # await JoinTeamHandler(self.bot, context, name).run()
+        with get_session() as session:
+            message_id = await controller.setup_embed(context, name)
+            team = await new.create_team(session, message_id, name)
+            logger.info(f"created new team: {team.name} ({message_id})")
+            await join.add_member(
+                session,
+                team,
+                context.author.id,
+                context.author.name,
+            )
+            await controller.update_message(context, team)
+            logger.info(
+                f"{context.author.name} (ID: {context.author.id}) joined the team {team.name} (ID: {team.id})."
+            )
 
     @commands.guild_only()
     @commands.hybrid_command(
@@ -48,10 +68,10 @@ class Team(commands.Cog, name="team"):
 
     @commands.guild_only()
     @team.command(name="join", description="생성된 팀에 참가")
-    @app_commands.describe(name="팀 이름")
-    async def join(self, context: "Context", name: str = "") -> None:
-        controller = JoinTeamController(context)
-        await JoinTeamHandler(controller).run()
+    async def join(self, context: "Context") -> None:
+        with get_session() as session:
+            controller = JoinTeamController(context)
+            await JoinTeamHandler(session, controller).run()
 
     @commands.guild_only()
     @commands.hybrid_command(
@@ -59,15 +79,15 @@ class Team(commands.Cog, name="team"):
         description="alias of /team join",
         aliases=["ㅊ", "참", "참여", "참가"],
     )
-    @app_commands.describe(name="팀 이름")
-    async def alias_join(self, context: "Context", name: str = "") -> None:
+    async def alias_join(self, context: "Context") -> None:
         await self.join(context)
 
     @commands.guild_only()
     @team.command(name="cancel", description="팀 참가 취소")
-    @app_commands.describe(name="팀 이름")
-    async def cancel_join(self, context: "Context", name: str = "") -> None:
-        await CancelTeamHandler(self.bot, context, name).run()
+    async def cancel_join(self, context: "Context") -> None:
+        with get_session() as session:
+            controller = CancelTeamController(context)
+            await CancelTeamHandler(session, controller).run()
 
     @commands.guild_only()
     @commands.hybrid_command(
@@ -75,15 +95,15 @@ class Team(commands.Cog, name="team"):
         description="alias of /team cancel",
         aliases=["ㅊㅅ", "취", "취소"],
     )
-    @app_commands.describe(name="팀 이름")
-    async def alias_cencel_join(self, context: "Context", name: str = "") -> None:
-        await self.cancel_join(context, name)
+    async def alias_cencel_join(self, context: "Context") -> None:
+        await self.cancel_join(context)
 
     @commands.guild_only()
     @team.command(name="shuffle", description="랜덤 팀 생성")
-    @app_commands.describe(name="팀 이름")
-    async def shuffle(self, context: "Context", name: str = "") -> None:
-        await ShuffleTeamHandler(self.bot, context, name).run()
+    async def shuffle(self, context: "Context") -> None:
+        with get_session() as session:
+            controller = ShuffleTeamController(context)
+            await ShuffleTeamHandler(session, controller).run()
 
     @commands.guild_only()
     @commands.hybrid_command(
@@ -91,15 +111,15 @@ class Team(commands.Cog, name="team"):
         description="alias of /team shuffle",
         aliases=["ㅅ", "셔", "셔플", "r", "random"],
     )
-    @app_commands.describe(name="팀 이름")
-    async def alias_shuffle(self, context: "Context", name: str = "") -> None:
-        await self.shuffle(context, name)
+    async def alias_shuffle(self, context: "Context") -> None:
+        await self.shuffle(context)
 
     @commands.guild_only()
     @team.command(name="info", description="팀 확인")
-    @app_commands.describe(name="팀 이름")
-    async def info(self, context: "Context", name: str = "") -> None:
-        await TeamInfoHandler(self.bot, context, name).run()
+    async def info(self, context: "Context") -> None:
+        with get_session() as session:
+            controller = TeamInfoController(context)
+            await TeamInfoHandler(session, controller).run()
 
     @commands.guild_only()
     @commands.hybrid_command(
@@ -107,22 +127,15 @@ class Team(commands.Cog, name="team"):
         description="alias of /team info",
         aliases=["ㅌ", "팀", "팀확인"],
     )
-    @app_commands.describe(name="팀 이름")
-    async def alias_info(self, context: "Context", name: str = "") -> None:
-        await self.info(context, name)
+    async def alias_info(self, context: "Context") -> None:
+        await self.info(context)
 
-    @commands.guild_only()
-    @team.command(name="predict", description="팀 예측")
-    @app_commands.describe(name="팀 이름")
-    async def predict(self, context: "Context", name: str = "") -> None:
-        await TeamPredictHandler(self.bot, context, name).run()
-
-    @commands.guild_only()
-    @commands.hybrid_command(
-        name="p",
-        description="alias of /team predict",
-        aliases=["ㅂ", "예", "예측"],
-    )
-    @app_commands.describe(name="팀 이름")
-    async def alias_predict(self, context: "Context", name: str = "") -> None:
-        await self.predict(context, name)
+    @commands.Cog.listener()
+    async def on_command_error(self, context: "Context", error) -> None:
+        if isinstance(error, TeamBaseError):
+            if error.alert:
+                embed = error.get_embed()
+                await context.send(embed=embed, ephemeral=True)
+            logger.warning(f"{context.author} (ID: {context.author.id}) raised {error}")
+        elif isinstance(error, commands.errors.CommandError):
+            logger.error(f"{context.author} (ID: {context.author.id}) raised {error}")

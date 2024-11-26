@@ -7,7 +7,7 @@ from langchain_core.messages import BaseMessage
 from langchain_core.outputs.llm_result import LLMResult
 
 from .....common.logger import get_logger
-from .....common.utils import color
+from .....common.utils import Color
 from .....common.utils.hash import generate_key
 
 if TYPE_CHECKING:
@@ -64,7 +64,7 @@ class ChatCallback(AsyncCallbackHandler):
         called_tool = serialized.copy()
         called_tool["args"] = input_str
         self.tool_list.append(called_tool)
-        embed = Embed(title="기능 호출", color=color.BASE)
+        embed = Embed(title="기능 호출", color=Color.BASE)
         for tool in self.tool_list:
             name = tool["name"]
             args = tool["args"]

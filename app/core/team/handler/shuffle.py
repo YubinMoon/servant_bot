@@ -1,60 +1,77 @@
+import json
 import random
-from typing import TYPE_CHECKING
+from datetime import datetime, timedelta
 
-from discord import Embed
+from sqlmodel import Session, select
 
-from ....common.utils import color
-from ...error.team import MemberNumError
+from ....common.logger import get_logger
+from ...error.team import TeamError
+from ...model.team import Team, TeamHistory
+from ..controller import ShuffleTeamController
 from .base import BaseHandler
 
-if TYPE_CHECKING:
-    from bot import ServantBot
-    from discord import Member
-    from discord.ext.commands import Context
+logger = get_logger(__name__)
+
+MULTIPLE = 0.1
 
 
 class ShuffleTeamHandler(BaseHandler):
-    logger_name = "shuffle_team_handler"
-    LANE = ["탑", "정글", "미드", "원딜", "서폿"]
+    def __init__(self, db: Session, controller: ShuffleTeamController) -> None:
+        super().__init__(db, controller)
+        self.controller = controller
 
-    def __init__(self, bot: "ServantBot", context: "Context", team_name: str) -> None:
-        super().__init__(bot, context, team_name)
-        self.base_weight = [[10000.0 for _ in range(5)] for _ in range(5)]
-        self.multiple = 0.1
+    async def run(self):
+        teams = self.get_team_list()
+        selected_team = await self.controller.get_team_from_view(teams)
 
-    async def action(self):
-        members_id = await self.db.get_members()
-        members = [self.guild.get_member(member) for member in members_id]
-        if len(members) not in [5, 10]:
-            raise MemberNumError(
-                f"Team {self.team_name} has {len(members)} members. It should be 5 or 10.",
-                self.team_name,
-            )
+        # # For Test
+        # while len(selected_team.members) < 10:
+        #     selected_team.members.append(
+        #         Member(discord_id=1234, name=f"test{len(selected_team.members)}")
+        #     )
+        # self.db.add(selected_team)
+        # self.db.commit()
+        # self.db.refresh(selected_team)
+
+        members = selected_team.members
         if len(members) == 5:
-            await self.shuffle_rank(members)
+            await self.shuffle_rank(selected_team)
         elif len(members) == 10:
-            await self.shuffle_custom(members)
-
-    async def shuffle_rank(self, members: "list[Member]") -> None:
-        team = await self.get_rank_team()
-        await self.db.add_history(team)
-        embed = Embed(
-            title=f"{self.team_name} 팀",
-            description="라인을 배정했어요.",
-            color=color.BASE,
-        )
-        for l, m in enumerate(team):
-            member = members[m]
-            embed.add_field(
-                name=self.LANE[l],
-                value=f"{member.mention} ({member.global_name or member.name})",
-                inline=False,
+            await self.shuffle_custom(selected_team)
+        else:
+            raise TeamError(
+                "Team member number is not correct.",
+                f"**{selected_team.name}** 팀에 참가한 맴버가 맞지 않아요.",
+                "팀 인원을 5명 또는 10명으로 맞춰주세요.",
             )
-        await self.context.send(embed=embed)
 
-    async def get_rank_team(self) -> list[int]:
+    def get_team_list(self):
+        teams = self.db.exec(
+            select(Team)
+            .where(Team.created_at > (datetime.now() - timedelta(days=1)))
+            .order_by(Team.created_at.desc())
+        ).all()
+        if not teams:
+            raise TeamError(
+                "Team is not found.",
+                f"현재 참가한 팀이 없어요.",
+                "**/j**로 팀에 참가해 보세요.",
+            )
+        return teams
+
+    async def shuffle_rank(self, team: Team) -> None:
+        histories = self.db.exec(
+            select(TeamHistory).where(TeamHistory.team == team)
+        ).all()
+        rank_team = await self.get_rank_team(histories)
+        self.db.add(TeamHistory(team=team, numbers=json.dumps(rank_team)))
+        self.db.commit()
+        await self.controller.send_rank_team(team, rank_team)
+
+    async def get_rank_team(self, histories: list[TeamHistory]) -> list[int]:
         team = []
-        weights = await self.get_weight()
+        weights = await self.get_weight(histories)
+        logger.info(weights)
         while len(set(team)) != 5:
             team.clear()
             for i in range(5):
@@ -64,11 +81,11 @@ class ShuffleTeamHandler(BaseHandler):
             new_team[member] = i
         return new_team
 
-    async def get_weight(self) -> list[list[float]]:
-        weight = self.base_weight.copy()
-        records = await self.db.get_history()
-        for record in records:
-            weight = self.calc_weight(weight, record)
+    async def get_weight(self, histories: list[TeamHistory]) -> list[list[float]]:
+        weight = [[10000.0 for _ in range(5)] for _ in range(5)]
+        for history in histories:
+            members: list[int] = json.loads(history.numbers)
+            weight = self.calc_weight(weight, members)
         return weight
 
     def calc_weight(
@@ -76,7 +93,7 @@ class ShuffleTeamHandler(BaseHandler):
     ) -> list[list[float]]:
         new_weight = weight.copy()
         for lane_no, member_no in enumerate(record):
-            remain = (new_weight[member_no][lane_no] * (1 - self.multiple)) // 4
+            remain = (new_weight[member_no][lane_no] * (1 - MULTIPLE)) // 4
             for i in range(5):
                 if i == lane_no:
                     new_weight[member_no][i] -= remain * 4
@@ -84,31 +101,7 @@ class ShuffleTeamHandler(BaseHandler):
                     new_weight[member_no][i] += remain
         return new_weight
 
-    async def shuffle_custom(self, members: "list[Member]") -> None:
+    async def shuffle_custom(self, team: Team) -> None:
+        members = team.members.copy()
         random.shuffle(members)
-        embed = Embed(
-            title=f"{self.team_name} 팀",
-            description="새로운 대전을 구성했어요.",
-            color=0xBEBEFE,
-        )
-        embed.add_field(
-            name="1팀",
-            value="\n".join(
-                [
-                    f"{member.mention} ({member.global_name or member.name})"
-                    for member in members[:5]
-                ]
-            ),
-            inline=False,
-        )
-        embed.add_field(
-            name="2팀",
-            value="\n".join(
-                [
-                    f"{member.mention} ({member.global_name or member.name})"
-                    for member in members[5:]
-                ]
-            ),
-            inline=False,
-        )
-        await self.context.send(embed=embed)
+        await self.controller.send_custom_team(team, members)

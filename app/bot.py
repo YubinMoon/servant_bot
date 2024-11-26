@@ -185,7 +185,3 @@ class ServantBot(commands.Bot):
             self.logger.warning(
                 f"{context.author} (ID: {context.author.id}) tried to execute the invalid command '{context.invoked_with}'"
             )
-        elif isinstance(error, commands.CommandError):
-            self.logger.error(error)
-        else:
-            raise error

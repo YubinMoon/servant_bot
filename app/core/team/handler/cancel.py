@@ -1,50 +1,61 @@
-from typing import TYPE_CHECKING
+from datetime import datetime, timedelta
 
-from discord import Embed
+from sqlmodel import Session, select
 
-from ....common.utils import color
-from ...error.team import AlreadyOutTeamError
+from ....common.logger import get_logger
+from ...error.team import TeamError
+from ...model.team import Team
+from ..controller import CancelTeamController
 from .join import JoinTeamHandler
 
-if TYPE_CHECKING:
-    from bot import ServantBot
-    from discord import Message
-    from discord.ext.commands import Context
+logger = get_logger(__name__)
 
 
 class CancelTeamHandler(JoinTeamHandler):
     logger_name = "cancel_team_handler"
 
-    def __init__(
-        self, bot: "ServantBot", context: "Context", team_name: str = ""
-    ) -> None:
-        super().__init__(bot, context, team_name)
+    def __init__(self, db: Session, controller: CancelTeamController) -> None:
+        super().__init__(db, controller)
+        self.controller = controller
 
-    async def action(self):
-        index = await self.get_member_index()
-        await self.db.pop_member(index)
-        await self.update_message()
-        self.logger.info(
-            f"{self.author} (ID: {self.author.id}) cancel joining the team {self.team_name}."
-        )
+    async def run(self):
+        teams = self.get_team_list()
+        selected_team = await self.controller.get_team_from_view(teams)
+        if not selected_team:
+            raise TeamError("Team is not selected.", alert=False)
+        await self.delete_member(selected_team)
 
-    async def get_member_index(self):
-        members_id = await self.get_members_id()
-        index = members_id.index(self.author.id)
-        return index
-
-    async def get_members_id(self):
-        members_id = await self.db.get_members()
-        if self.author.id not in members_id:
-            raise AlreadyOutTeamError(
-                f"{self.author} (ID: {self.author.id}) tried to cancel joining a team that the user is not in.",
-                self.team_name,
+    def get_team_list(self):
+        teams = self.db.exec(
+            select(Team)
+            .where(Team.created_at > (datetime.now() - timedelta(days=1)))
+            .order_by(Team.created_at.desc())
+        ).all()
+        if not teams:
+            raise TeamError(
+                "Team is not found.",
+                f"현재 참가한 팀이 없어요.",
+                "**/j**로 팀에 참가해 보세요.",
             )
-        return members_id
+        return teams
 
-    async def notify(self, message: "Message"):
-        embed = Embed(
-            description=f"{self.author.mention}님이 **{self.team_name}**팀 등록을 취소했어요.  {message.jump_url}",
-            color=color.BASE,
+    async def delete_member(self, team: Team):
+        user_id = self.controller.user_id
+        user_name = self.controller.user_name
+        member_ids = [member.discord_id for member in team.members]
+
+        if self.controller.user_id not in member_ids:
+            raise TeamError(
+                f"Already out of the team {team.name}.",
+                f"**{team.name}** 팀에 참가하지 않았어요.",
+                "팀에 참가하려면 **/j**로 참가해 주세요.",
+            )
+
+        team.members = [
+            member for member in team.members if member.discord_id != user_id
+        ]
+        self.db.commit()
+        await self.controller.update_message(team)
+        logger.info(
+            f"{user_name} (ID: {user_id}) joined the team {team.name} (ID: {team.id})."
         )
-        await self.context.send(embed=embed, silent=True)

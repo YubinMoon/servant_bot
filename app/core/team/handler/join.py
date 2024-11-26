@@ -1,11 +1,9 @@
 from datetime import datetime, timedelta
 
-from sqlalchemy.orm import selectinload
-from sqlmodel import select
+from sqlmodel import Session, select
 
 from ....common.logger import get_logger
-from ...database import get_session
-from ...error.team import AlreadyInTeamError, NoTeamError, NoTeamSelectError
+from ...error.team import TeamError
 from ...model.team import Member, Team
 from ..controller import JoinTeamController
 from .base import BaseHandler
@@ -13,54 +11,70 @@ from .base import BaseHandler
 logger = get_logger(__name__)
 
 
+async def add_member(db: Session, team: Team, user_id: int, user_name: str):
+    member_ids = [member.discord_id for member in team.members]
+
+    # check duplication
+    if user_id in member_ids:
+        raise TeamError(
+            f"Already in the team {team.name}.",
+            f"이미 **{team.name}** 팀에 참가하고 있어요.",
+            "팀을 떠나려면 **/c**로 취소해 주세요.",
+        )
+
+    # add member
+    member = Member(discord_id=user_id, name=user_name, team_id=team.id)
+    db.add(member)
+    db.commit()
+    db.refresh(team)
+
+
 class JoinTeamHandler(BaseHandler):
-    def __init__(self, controller: JoinTeamController) -> None:
-        super().__init__(None, controller.context, "")
+    def __init__(self, db: Session, controller: JoinTeamController) -> None:
+        super().__init__(db, controller)
         self.controller = controller
 
-    async def action(self) -> None:
+    async def run(self) -> None:
         teams = self.get_team_list()
-        selected_team = await self.controller.get_team_name_from_view(teams)
+        selected_team = await self.controller.get_team_from_view(teams)
         if not selected_team:
-            logger.warn("No team is selected.")
-            return
-        self.add_member(selected_team)
-        updated_team = self.get_updated_team(selected_team)
-        await self.controller.update_message(updated_team)
+            raise TeamError("Team is not selected.", alert=False)
+        await self.add_member(selected_team)
 
     def get_team_list(self):
-        with get_session() as session:
-            teams = session.exec(
-                select(Team)
-                .options(selectinload(Team.members))
-                .where(Team.created_at > (datetime.now() - timedelta(days=1)))
-            ).all()
+        teams = self.db.exec(
+            select(Team)
+            .where(Team.created_at > (datetime.now() - timedelta(days=1)))
+            .order_by(Team.created_at.desc())
+        ).all()
         if not teams:
-            raise NoTeamError("Team is not found.")
+            raise TeamError(
+                "Team is not found.",
+                "팀을 찾을 수 없어요.",
+                "**/q**로 팀을 새로 생성해 보세요.",
+            )
         return teams
 
-    def add_member(self, team: Team):
+    async def add_member(self, team: Team):
         user_id = self.controller.user_id
         user_name = self.controller.user_name
         member_ids = [member.discord_id for member in team.members]
 
         # check duplication
         if self.controller.user_id in member_ids:
-            raise AlreadyInTeamError(
-                f"{user_name} (ID: {user_id}) tried to join a team {team.name} that the user is already in.",
-                team.name,
+            raise TeamError(
+                f"Already in the team {team.name}.",
+                f"이미 **{team.name}** 팀에 참가하고 있어요.",
+                "팀을 떠나려면 **/c**로 취소해 주세요.",
             )
 
         # add member
         member = Member(discord_id=user_id, name=user_name, team_id=team.id)
-        with get_session() as session:
-            session.add(member)
-            session.commit()
-        logger.debug(
+        self.db.add(member)
+        self.db.commit()
+        self.db.refresh(team)
+
+        await self.controller.update_message(team)
+        logger.info(
             f"{user_name} (ID: {user_id}) joined the team {team.name} (ID: {team.id})."
         )
-
-    def get_updated_team(self, team: Team) -> Team:
-        with get_session() as session:
-            new_team = session.get(Team, team.id, options=[selectinload(Team.members)])
-        return new_team

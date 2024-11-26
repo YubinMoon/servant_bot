@@ -1,46 +1,33 @@
-from typing import TYPE_CHECKING
+from datetime import datetime, timedelta
 
-from discord import Embed
+from sqlmodel import Session, select
 
-from ....common.utils import color
-from ...error.team import NoMemberError
+from ...error.team import TeamError
+from ...model.team import Team
+from ..controller import TeamInfoController
 from .base import BaseHandler
-
-if TYPE_CHECKING:
-    from bot import ServantBot
-    from discord import Member
-    from discord.ext.commands import Context
 
 
 class TeamInfoHandler(BaseHandler):
-    logger_name = "team_info_handler"
+    def __init__(self, db: Session, controller: TeamInfoController) -> None:
+        super().__init__(db, controller)
+        self.controller = controller
 
-    def __init__(
-        self, bot: "ServantBot", context: "Context", team_name: str = ""
-    ) -> None:
-        super().__init__(bot, context, team_name)
+    async def run(self):
+        teams = self.get_team_list()
+        selected_team = await self.controller.get_team_from_view(teams)
+        await self.controller.send_team_info(selected_team)
 
-    async def action(self):
-        members = await self.get_members()
-        await self.send_result(members)
-
-    async def get_members(self):
-        members_id = await self.db.get_members()
-        members = [self.guild.get_member(member) for member in members_id]
-        members = [member for member in members if member is not None]
-        if members == []:
-            raise NoMemberError(f"No member in {self.team_name} team.", self.team_name)
-        return members
-
-    async def send_result(self, members: "list[Member]"):
-        embed = Embed(
-            title=f"**{self.team_name}** 팀",
-            color=color.BASE,
-        )
-        embed.add_field(
-            name=f"현재 팀원: {len(members)}",
-            value="\n".join(
-                [f"{member.mention} ({member.name})" for member in members]
-            ),
-        )
-        await self.context.send(embed=embed, ephemeral=True, silent=True)
+    def get_team_list(self):
+        teams = self.db.exec(
+            select(Team)
+            .where(Team.created_at > (datetime.now() - timedelta(days=1)))
+            .order_by(Team.created_at.desc())
+        ).all()
+        if not teams:
+            raise TeamError(
+                "Team is not found.",
+                f"현재 생성된 팀이 없어요.",
+                "**/q**로 팀을 만들어 보세요.",
+            )
+        return teams
