@@ -2,15 +2,15 @@ from typing import TYPE_CHECKING
 
 from discord import app_commands
 from discord.ext import commands
+from regex import F
 
 from ..common.logger import get_logger
 from ..core.database import get_session
 from ..core.error.team import TeamBaseError
-from ..core.team import controller
-from ..core.team.handler import cancel, join, new
+from ..core.team import controller, handler
 from ..core.team.view import (
     JoinTeamView,
-    TeamDetailView,
+    TeamControlView,
     TeamInfoView,
     TeamJoinView,
     TeamLeftView,
@@ -22,6 +22,13 @@ if TYPE_CHECKING:
     from discord.ext.commands import Context
 
 logger = get_logger(__name__)
+
+
+def is_in_guild(guild_id):
+    async def predicate(ctx: "Context"):
+        return ctx.guild and ctx.guild.id == guild_id
+
+    return commands.check(predicate)
 
 
 class Team(commands.Cog, name="team"):
@@ -47,9 +54,9 @@ class Team(commands.Cog, name="team"):
     async def start(self, context: "Context", name: str) -> None:
         with get_session() as session:
             message_id = await controller.setup_embed(context, name)
-            team = await new.create_team(session, message_id, name)
+            team = await handler.create_team(session, message_id, name)
             logger.info(f"created new team: {team.name} ({message_id})")
-            await join.add_member(
+            await handler.add_member(
                 session,
                 team,
                 context.author.id,
@@ -83,10 +90,10 @@ class Team(commands.Cog, name="team"):
     @team.command(name="join", description="생성된 팀에 참가")
     async def join(self, context: "Context") -> None:
         with get_session() as session:
-            teams = join.get_team_list(session)
+            teams = handler.get_team_list(session)
             if len(teams) == 1:
                 team = teams[0]
-                await join.add_member(
+                await handler.add_member(
                     session,
                     team,
                     context.author.id,
@@ -106,7 +113,11 @@ class Team(commands.Cog, name="team"):
                 logger.info(
                     f"{context.author.name} (ID: {context.author.id}) joined the team {team.name} (ID: {team.id})."
                 )
-                await context.defer()
+                await context.send(
+                    f"{team.name} 팀에 참가했어요.",
+                    ephemeral=True,
+                    delete_after=3,
+                )
             else:
                 view = TeamJoinView(teams)
                 await context.send(
@@ -129,10 +140,10 @@ class Team(commands.Cog, name="team"):
     @team.command(name="cancel", description="팀 참가 취소")
     async def cancel_join(self, context: "Context") -> None:
         with get_session() as session:
-            teams = join.get_team_list(session)
+            teams = handler.get_team_list(session)
             if len(teams) == 1:
                 team = teams[0]
-                await cancel.remove_member(
+                await handler.remove_member(
                     session,
                     team,
                     context.author.id,
@@ -151,6 +162,11 @@ class Team(commands.Cog, name="team"):
                 )
                 logger.info(
                     f"{context.author.name} (ID: {context.author.id}) left the team {team.name} (ID: {team.id})."
+                )
+                await context.send(
+                    f"{team.name} 팀에서 나갔어요.",
+                    ephemeral=True,
+                    delete_after=3,
                 )
             else:
                 view = TeamLeftView(teams)
@@ -174,13 +190,13 @@ class Team(commands.Cog, name="team"):
     @team.command(name="info", description="팀 확인")
     async def info(self, context: "Context") -> None:
         with get_session() as session:
-            teams = join.get_team_list(session)
+            teams = handler.get_team_list(session)
             if len(teams) == 1:
                 team = teams[0]
                 with get_session() as session:
                     message = await controller.fetch_message(context.channel, team)
                     await controller.show_team_detail(message, team)
-                    view = TeamDetailView(team)
+                    view = TeamControlView(team)
                     await context.send(
                         f"**{team.name}**팀 메뉴", view=view, ephemeral=True
                     )
@@ -200,15 +216,57 @@ class Team(commands.Cog, name="team"):
     @team.command(name="shuffle", description="랜덤 팀 생성")
     async def shuffle(self, context: "Context") -> None:
         with get_session() as session:
-            teams = join.get_team_list(session)
+            teams = handler.get_team_list(session)
+            if len(teams) == 1:
+                team = teams[0]
+                message = await controller.fetch_message(context.channel, team)
+                members = team.members
 
-            view = TeamShuffleView(teams)
-            await context.send(
-                "참가하려는 팀을 선택해 주세요.",
-                view=view,
-                ephemeral=True,
-                delete_after=10,
-            )
+                team_idx = await handler.get_random_team(session, team)
+                if len(members) == 5:
+                    await controller.send_rank_team(message, team, team_idx)
+                else:
+                    await controller.send_custom_team(message, team, team_idx)
+                await context.send(
+                    f"{team.name} 팀을 섞었어요.",
+                    ephemeral=True,
+                    delete_after=3,
+                )
+            else:
+                view = TeamShuffleView(teams)
+                await context.send(
+                    "참가하려는 팀을 선택해 주세요.",
+                    view=view,
+                    ephemeral=True,
+                    delete_after=10,
+                )
+
+    @commands.guild_only()
+    # @is_in_guild(11186977423409930)
+    @team.command(name="test", description="테스트용 명령어")
+    async def test(self, context: "Context", team_num: int, members: int) -> None:
+        with get_session() as session:
+            teams = handler.get_team_list(session)
+            team = teams[team_num - 1]
+            if len(team.members) < members:
+                needs = members - len(team.members)
+                for i in range(needs):
+                    await handler.add_member(
+                        session,
+                        team,
+                        i,
+                        f"member{i}",
+                    )
+            elif len(team.members) > members:
+                needs = len(team.members) - members
+                for i in range(needs):
+                    await handler.remove_member(
+                        session,
+                        team,
+                        i,
+                        f"member{i}",
+                    )
+            await context.send("테스트 완료", ephemeral=True)
 
     @commands.Cog.listener()
     async def on_command_error(self, context: "Context", error) -> None:
