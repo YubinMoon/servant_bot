@@ -1,0 +1,8 @@
+BASE = 0xBEBEFE
+ERROR = 0xE02B2B
+
+
+class Colors:
+    BASE = 0xBEBEFE
+    DANGER = 0xEBB734
+    ERROR = 0xE02B2B
