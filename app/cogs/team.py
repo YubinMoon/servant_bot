@@ -24,13 +24,6 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 
-def is_in_guild(guild_id):
-    async def predicate(ctx: "Context"):
-        return ctx.guild and ctx.guild.id == guild_id
-
-    return commands.check(predicate)
-
-
 class Team(commands.Cog, name="team"):
     def __init__(self, bot: "ServantBot") -> None:
         self.bot = bot
@@ -240,33 +233,6 @@ class Team(commands.Cog, name="team"):
                     ephemeral=True,
                     delete_after=10,
                 )
-
-    @commands.guild_only()
-    # @is_in_guild(11186977423409930)
-    @team.command(name="test", description="테스트용 명령어")
-    async def test(self, context: "Context", team_num: int, members: int) -> None:
-        with get_session() as session:
-            teams = handler.get_team_list(session)
-            team = teams[team_num - 1]
-            if len(team.members) < members:
-                needs = members - len(team.members)
-                for i in range(needs):
-                    await handler.add_member(
-                        session,
-                        team,
-                        i,
-                        f"member{i}",
-                    )
-            elif len(team.members) > members:
-                needs = len(team.members) - members
-                for i in range(needs):
-                    await handler.remove_member(
-                        session,
-                        team,
-                        i,
-                        f"member{i}",
-                    )
-            await context.send("테스트 완료", ephemeral=True)
 
     @commands.Cog.listener()
     async def on_command_error(self, context: "Context", error) -> None:
