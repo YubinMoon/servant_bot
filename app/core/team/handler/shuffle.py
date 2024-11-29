@@ -13,6 +13,67 @@ from .base import BaseHandler
 logger = get_logger(__name__)
 
 MULTIPLE = 0.1
+BASE_WEIGHT = [[10000.0 for _ in range(5)] for _ in range(5)]
+
+
+async def get_random_team(db: Session, team: Team) -> list[int]:
+    members = team.members
+    if len(members) == 5:
+        return await _shuffle_rank(db, team)
+    elif len(members) == 10:
+        return await shuffle_custom(team)
+    else:
+        raise TeamError(
+            "Team member number is not correct.",
+            f"**{team.name}** 팀에 참가한 맴버가 맞지 않아요.",
+            "팀 인원을 5명 또는 10명으로 맞춰주세요.",
+        )
+
+
+async def _shuffle_rank(db: Session, team: Team) -> None:
+    histories = db.exec(select(TeamHistory).where(TeamHistory.team == team)).all()
+    rank_team = await _get_rank_team(histories)
+    db.add(TeamHistory(team=team, numbers=json.dumps(rank_team)))
+    db.commit()
+    return rank_team
+
+
+async def _get_rank_team(histories: list[TeamHistory]) -> list[int]:
+    team = []
+    weights = await _get_weight(histories)
+    while len(set(team)) != 5:
+        team.clear()
+        for i in range(5):
+            team.append(random.choices(range(5), weights=weights[i])[0])
+    new_team = team.copy()
+    for i, member in enumerate(team):
+        new_team[member] = i
+    return new_team
+
+
+async def _get_weight(histories: list[TeamHistory]) -> list[list[float]]:
+    weight = BASE_WEIGHT.copy()
+    for history in histories:
+        members: list[int] = json.loads(history.numbers)
+        weight = _calc_weight(weight, members)
+    return weight
+
+
+def _calc_weight(weight: list[list[float]], record: list[int]) -> list[list[float]]:
+    new_weight = weight.copy()
+    for lane_no, member_no in enumerate(record):
+        remain = (new_weight[member_no][lane_no] * (1 - MULTIPLE)) // 4
+        for i in range(5):
+            if i == lane_no:
+                new_weight[member_no][i] -= remain * 4
+            else:
+                new_weight[member_no][i] += remain
+    return new_weight
+
+
+async def shuffle_custom(team: Team) -> list[int]:
+    members = team.members.copy()
+    return random.shuffle(members)
 
 
 class ShuffleTeamHandler(BaseHandler):

@@ -1,21 +1,25 @@
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 
-from discord import Embed, NotFound
+from discord import Embed, Interaction, NotFound, ui
 
 from ...common.utils.color import Colors
 from ..error.team import NoTeamMessageError
 from ..model.team import Member, Team
 
-if TYPE_CHECKING:
-    from discord.ext.commands import Context
-    from discord import Message
+# from .view import (
+#     CancelTeamSelectView,
+#     JoinTeamSelectView,
+#     JoinTeamView,
+#     TeamInfoSelectView,
+# )
 
-from .view import (
-    CancelTeamSelectView,
-    JoinTeamSelectView,
-    JoinTeamView,
-    TeamInfoSelectView,
-)
+if TYPE_CHECKING:
+    from discord import InteractionResponse, Message, User
+    from discord.abc import MessageableChannel
+    from discord.ext.commands import Context
+
+    from .view import BaseTeamSelectView
 
 
 class BaseTeamController:
@@ -26,15 +30,46 @@ class BaseTeamController:
         await self.context.send(embed=embed, ephemeral=True, silent=True)
 
 
-async def update_message(context: "Context", team: Team):
+async def fetch_message(channel: "MessageableChannel", team: Team) -> "Message":
     message_id = team.message_id
     try:
-        message = await context.channel.fetch_message(message_id)
+        message = await channel.fetch_message(message_id)
     except NotFound as e:
         raise NoTeamMessageError("Team Create message is not found.", team.name)
     if message.embeds == []:
         raise NoTeamMessageError("Team Create embed is not found.", team.name)
+    return message
 
+
+async def send_join_alert(
+    message: "Message",
+    team: Team,
+    user_id: int,
+):
+    embed = Embed(
+        description=f"<@{user_id}>님이 **{team.name}**팀에 참가했어요.",
+        color=Colors.BASE,
+    )
+    await message.reply(embed=embed)
+
+
+async def send_left_alert(
+    message: "Message",
+    team: Team,
+    user_id: int,
+):
+    embed = Embed(
+        description=f"<@{user_id}>님이 **{team.name}**팀에서 나갔어요.",
+        color=Colors.BASE,
+    )
+    await message.reply(embed=embed)
+
+
+async def update_team_message(
+    message: "Message",
+    team: Team,
+    view=ui.View,
+):
     members = team.members
     embed = message.embeds[0]
     embed.set_field_at(
@@ -42,12 +77,95 @@ async def update_message(context: "Context", team: Team):
         name=f"현제 인원: {len(members)}",
         value=" - ".join([f"<@{member.discord_id}>" for member in members]),
     )
-    await message.edit(embed=embed, view=JoinTeamView(team))
+    await message.edit(embed=embed, view=view)
 
+
+async def show_team_list(
+    context: "Context",
+    teams: list[Team],
+    view: ui.View,
+):
+    description = str()
+    for idx, team in enumerate(teams):
+        tdelta = datetime.now() - team.created_at
+        minute = tdelta.seconds // 60
+        hour = tdelta.seconds // 3600
+        time = f"{hour}시간 {minute}분" if hour > 0 else f"{minute}분"
+        description += f"### {idx+1}. {team.name} ({len(team.members)}명)\n"
+        description += f"**{time} 전**에 생성됨\n"
     embed = Embed(
-        description=f"{context.author.mention}님이 **{team.name}**팀에 참가했어요.",
+        title="팀 목록",
+        description=description,
         color=Colors.BASE,
     )
+    embed.set_footer(text="팀을 선택해 주세요.")
+    message = await context.send(embed=embed, view=view, ephemeral=True)
+    await view.wait()
+    await message.delete()
+
+
+async def show_team_detail(
+    message: "Message",
+    team: Team,
+):
+    members = team.members
+    embed = Embed(
+        title=f"**{team.name}** 팀",
+        color=Colors.BASE,
+    )
+    embed.add_field(
+        name=f"현재 팀원: {len(members)}",
+        value="\n".join(
+            [f"<@{member.discord_id}> ({member.name})" for member in members]
+        ),
+    )
+    await message.reply(embed=embed)
+
+
+async def get_team_from_view(
+    context: "Context", view: "BaseTeamSelectView"
+) -> Team | None:
+    message = await context.send("팀을 선택해 주세요.", view=view, ephemeral=True)
+    result = await view.wait()
+    if result:
+        await message.edit(content="팀을 선택하지 않았어요.", view=None, delete_after=5)
+        return None
+    await message.delete()
+    return view.selected_team
+
+
+async def send_rank_team(message: "Message", team: Team, rank_team: list[int]) -> None:
+    LANE = ["탑", "정글", "미드", "원딜", "서폿"]
+
+    embed = Embed(
+        title=f"{team.name} 팀",
+        description="라인을 배정했어요.",
+        color=Colors.BASE,
+    )
+    for l, m in enumerate(rank_team):
+        member = team.members[m]
+        embed.add_field(
+            name=LANE[l],
+            value=f"<@{member.discord_id}> ({member.name})",
+            inline=False,
+        )
+    await message.reply(embed=embed)
+
+
+async def send_custom_team(message: "Message", team: Team, rank_team: list[int]):
+    embed = Embed(
+        title=f"{team.name} 팀",
+        description="새로운 대전을 구성했어요.",
+        color=0xBEBEFE,
+    )
+    for idx, m_idx in enumerate(rank_team):
+        member = team.members[m_idx]
+        team_name = "1팀" if idx < 5 else "2팀"
+        embed.add_field(
+            name=team_name,
+            value="\n".join(f"<@{member.discord_id}> ({member.name})"),
+            inline=False,
+        )
     await message.reply(embed=embed)
 
 
@@ -59,18 +177,19 @@ class JoinTeamController(BaseTeamController):
         self._author = context.author
 
     async def get_team_from_view(self, teams: list[Team]) -> Team | None:
-        view = JoinTeamSelectView(teams, self.user_id)
-        message = await self.context.send(
-            "참가하려는 팀을 선택해 주세요.", view=view, ephemeral=True
-        )
-        result = await view.wait()
-        if result:
-            await message.edit(
-                content="팀을 선택하지 않았어요.", view=None, delete_after=5
-            )
-            return None
-        await message.delete()
-        return view.selected_team
+        pass
+        # view = JoinTeamSelectView(teams, self.user_id)
+        # message = await self.context.send(
+        #     "참가하려는 팀을 선택해 주세요.", view=view, ephemeral=True
+        # )
+        # result = await view.wait()
+        # if result:
+        #     await message.edit(
+        #         content="팀을 선택하지 않았어요.", view=None, delete_after=5
+        #     )
+        #     return None
+        # await message.delete()
+        # return view.selected_team
 
     async def update_message(self, team: Team):
         message = await self._get_message(team)
@@ -138,18 +257,19 @@ class CancelTeamController(JoinTeamController):
         super().__init__(context)
 
     async def get_team_from_view(self, teams: list[Team]) -> Team | None:
-        view = CancelTeamSelectView(teams, self.user_id)
-        message = await self.context.send(
-            "나가려는 팀을 선택해 주세요.", view=view, ephemeral=True
-        )
-        result = await view.wait()
-        if result:
-            await message.edit(
-                content="팀을 선택하지 않았어요.", view=None, delete_after=5
-            )
-            return None
-        await message.delete()
-        return view.selected_team
+        pass
+        # view = CancelTeamSelectView(teams, self.user_id)
+        # message = await self.context.send(
+        #     "나가려는 팀을 선택해 주세요.", view=view, ephemeral=True
+        # )
+        # result = await view.wait()
+        # if result:
+        #     await message.edit(
+        #         content="팀을 선택하지 않았어요.", view=None, delete_after=5
+        #     )
+        #     return None
+        # await message.delete()
+        # return view.selected_team
 
     async def _notify(self, team: Team, message: "Message"):
         embed = Embed(
@@ -164,18 +284,19 @@ class ShuffleTeamController(JoinTeamController):
         super().__init__(context)
 
     async def get_team_from_view(self, teams: list[Team]) -> Team | None:
-        view = CancelTeamSelectView(teams, self.user_id)
-        message = await self.context.send(
-            "뽑을 팀을 선택해 주세요.", view=view, ephemeral=True
-        )
-        result = await view.wait()
-        if result:
-            await message.edit(
-                content="팀을 선택하지 않았어요.", view=None, delete_after=5
-            )
-            return None
-        await message.delete()
-        return view.selected_team
+        pass
+        # view = CancelTeamSelectView(teams, self.user_id)
+        # message = await self.context.send(
+        #     "뽑을 팀을 선택해 주세요.", view=view, ephemeral=True
+        # )
+        # result = await view.wait()
+        # if result:
+        #     await message.edit(
+        #         content="팀을 선택하지 않았어요.", view=None, delete_after=5
+        #     )
+        #     return None
+        # await message.delete()
+        # return view.selected_team
 
     async def send_rank_team(self, team: Team, rank_team: list[int]) -> None:
         LANE = ["탑", "정글", "미드", "원딜", "서폿"]
@@ -222,18 +343,19 @@ class TeamInfoController(BaseTeamController):
         super().__init__(context)
 
     async def get_team_from_view(self, teams: list[Team]) -> Team | None:
-        view = TeamInfoSelectView(teams)
-        message = await self.context.send(
-            "나가려는 팀을 선택해 주세요.", view=view, ephemeral=True
-        )
-        result = await view.wait()
-        if result:
-            await message.edit(
-                content="팀을 선택하지 않았어요.", view=None, delete_after=5
-            )
-            return None
-        await message.delete()
-        return view.selected_team
+        pass
+        # view = TeamInfoSelectView(teams)
+        # message = await self.context.send(
+        #     "나가려는 팀을 선택해 주세요.", view=view, ephemeral=True
+        # )
+        # result = await view.wait()
+        # if result:
+        #     await message.edit(
+        #         content="팀을 선택하지 않았어요.", view=None, delete_after=5
+        #     )
+        #     return None
+        # await message.delete()
+        # return view.selected_team
 
     async def send_team_info(self, team: Team):
         embed = Embed(

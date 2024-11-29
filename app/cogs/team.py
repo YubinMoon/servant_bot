@@ -7,21 +7,15 @@ from ..common.logger import get_logger
 from ..core.database import get_session
 from ..core.error.team import TeamBaseError
 from ..core.team import controller
-from ..core.team.controller import (
-    CancelTeamController,
-    JoinTeamController,
-    ShuffleTeamController,
-    TeamInfoController,
+from ..core.team.handler import cancel, join, new
+from ..core.team.view import (
+    JoinTeamView,
+    TeamDetailView,
+    TeamInfoView,
+    TeamJoinView,
+    TeamLeftView,
+    TeamShuffleView,
 )
-from ..core.team.handler import (
-    JoinTeamHandler,
-    NewTeamHandler,
-    ShuffleTeamHandler,
-    TeamInfoHandler,
-    join,
-    new,
-)
-from ..core.team.handler.cancel import CancelTeamHandler
 
 if TYPE_CHECKING:
     from bot import ServantBot
@@ -40,6 +34,14 @@ class Team(commands.Cog, name="team"):
         pass
 
     @commands.guild_only()
+    @commands.hybrid_command(
+        name="q", description="새로운 팀 생성", aliases=["ㅋ", "큐"]
+    )
+    @app_commands.describe(name="팀 이름")
+    async def alias_start(self, context: "Context", name: str) -> None:
+        await self.start(context, name)
+
+    @commands.guild_only()
     @team.command(name="start", description="새로운 팀 생성")
     @app_commands.describe(name="팀 이름")
     async def start(self, context: "Context", name: str) -> None:
@@ -53,25 +55,20 @@ class Team(commands.Cog, name="team"):
                 context.author.id,
                 context.author.name,
             )
-            await controller.update_message(context, team)
+            message = await controller.fetch_message(context, team)
+            await controller.send_join_alert(
+                message,
+                team,
+                context.author.id,
+            )
+            await controller.update_team_message(
+                message,
+                team,
+                JoinTeamView(team),
+            )
             logger.info(
                 f"{context.author.name} (ID: {context.author.id}) joined the team {team.name} (ID: {team.id})."
             )
-
-    @commands.guild_only()
-    @commands.hybrid_command(
-        name="q", description="새로운 팀 생성", aliases=["ㅋ", "큐"]
-    )
-    @app_commands.describe(name="팀 이름")
-    async def alias_start(self, context: "Context", name: str) -> None:
-        await self.start(context, name)
-
-    @commands.guild_only()
-    @team.command(name="join", description="생성된 팀에 참가")
-    async def join(self, context: "Context") -> None:
-        with get_session() as session:
-            controller = JoinTeamController(context)
-            await JoinTeamHandler(session, controller).run()
 
     @commands.guild_only()
     @commands.hybrid_command(
@@ -83,11 +80,41 @@ class Team(commands.Cog, name="team"):
         await self.join(context)
 
     @commands.guild_only()
-    @team.command(name="cancel", description="팀 참가 취소")
-    async def cancel_join(self, context: "Context") -> None:
+    @team.command(name="join", description="생성된 팀에 참가")
+    async def join(self, context: "Context") -> None:
         with get_session() as session:
-            controller = CancelTeamController(context)
-            await CancelTeamHandler(session, controller).run()
+            teams = join.get_team_list(session)
+            if len(teams) == 1:
+                team = teams[0]
+                await join.add_member(
+                    session,
+                    team,
+                    context.author.id,
+                    context.author.name,
+                )
+                message = await controller.fetch_message(context.channel, team)
+                await controller.send_join_alert(
+                    message,
+                    team,
+                    context.author.id,
+                )
+                await controller.update_team_message(
+                    message,
+                    team,
+                    JoinTeamView(team),
+                )
+                logger.info(
+                    f"{context.author.name} (ID: {context.author.id}) joined the team {team.name} (ID: {team.id})."
+                )
+                await context.defer()
+            else:
+                view = TeamJoinView(teams)
+                await context.send(
+                    "참가하려는 팀을 선택해 주세요.",
+                    view=view,
+                    ephemeral=True,
+                    delete_after=10,
+                )
 
     @commands.guild_only()
     @commands.hybrid_command(
@@ -99,11 +126,66 @@ class Team(commands.Cog, name="team"):
         await self.cancel_join(context)
 
     @commands.guild_only()
-    @team.command(name="shuffle", description="랜덤 팀 생성")
-    async def shuffle(self, context: "Context") -> None:
+    @team.command(name="cancel", description="팀 참가 취소")
+    async def cancel_join(self, context: "Context") -> None:
         with get_session() as session:
-            controller = ShuffleTeamController(context)
-            await ShuffleTeamHandler(session, controller).run()
+            teams = join.get_team_list(session)
+            if len(teams) == 1:
+                team = teams[0]
+                await cancel.remove_member(
+                    session,
+                    team,
+                    context.author.id,
+                    context.author.name,
+                )
+                message = await controller.fetch_message(context.channel, team)
+                await controller.send_left_alert(
+                    message,
+                    team,
+                    context.author.id,
+                )
+                await controller.update_team_message(
+                    message,
+                    team,
+                    JoinTeamView(team),
+                )
+                logger.info(
+                    f"{context.author.name} (ID: {context.author.id}) left the team {team.name} (ID: {team.id})."
+                )
+            else:
+                view = TeamLeftView(teams)
+                await context.send(
+                    "나가려는 팀을 선택해 주세요.",
+                    view=view,
+                    ephemeral=True,
+                    delete_after=10,
+                )
+
+    @commands.guild_only()
+    @commands.hybrid_command(
+        name="t",
+        description="alias of /team info",
+        aliases=["ㅌ", "팀", "팀확인"],
+    )
+    async def alias_info(self, context: "Context") -> None:
+        await self.info(context)
+
+    @commands.guild_only()
+    @team.command(name="info", description="팀 확인")
+    async def info(self, context: "Context") -> None:
+        with get_session() as session:
+            teams = join.get_team_list(session)
+            if len(teams) == 1:
+                team = teams[0]
+                with get_session() as session:
+                    message = await controller.fetch_message(context.channel, team)
+                    await controller.show_team_detail(message, team)
+                    view = TeamDetailView(team)
+                    await context.send(
+                        f"**{team.name}**팀 메뉴", view=view, ephemeral=True
+                    )
+            else:
+                await controller.show_team_list(context, teams, TeamInfoView(teams))
 
     @commands.guild_only()
     @commands.hybrid_command(
@@ -115,20 +197,18 @@ class Team(commands.Cog, name="team"):
         await self.shuffle(context)
 
     @commands.guild_only()
-    @team.command(name="info", description="팀 확인")
-    async def info(self, context: "Context") -> None:
+    @team.command(name="shuffle", description="랜덤 팀 생성")
+    async def shuffle(self, context: "Context") -> None:
         with get_session() as session:
-            controller = TeamInfoController(context)
-            await TeamInfoHandler(session, controller).run()
+            teams = join.get_team_list(session)
 
-    @commands.guild_only()
-    @commands.hybrid_command(
-        name="t",
-        description="alias of /team info",
-        aliases=["ㅌ", "팀", "팀확인"],
-    )
-    async def alias_info(self, context: "Context") -> None:
-        await self.info(context)
+            view = TeamShuffleView(teams)
+            await context.send(
+                "참가하려는 팀을 선택해 주세요.",
+                view=view,
+                ephemeral=True,
+                delete_after=10,
+            )
 
     @commands.Cog.listener()
     async def on_command_error(self, context: "Context", error) -> None:

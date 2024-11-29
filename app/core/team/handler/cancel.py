@@ -1,14 +1,35 @@
 from datetime import datetime, timedelta
 
+from httpx import delete
 from sqlmodel import Session, select
 
 from ....common.logger import get_logger
 from ...error.team import TeamError
-from ...model.team import Team
+from ...model.team import Member, Team
 from ..controller import CancelTeamController
 from .join import JoinTeamHandler
 
 logger = get_logger(__name__)
+
+
+async def remove_member(db: Session, team: Team, user_id: int, user_name: str):
+    member_ids = [member.discord_id for member in team.members]
+
+    # check duplication
+    if user_id not in member_ids:
+        raise TeamError(
+            f"Already left the team {team.name}.",
+            f"**{team.name}** 팀에 참가하지 않았어요.",
+            "팀에 참가하려면 **/j**로 참가해 주세요.",
+        )
+
+    # delete member
+    member = db.exec(
+        select(Member).where(Member.team == team, Member.discord_id == user_id)
+    ).first()
+    db.delete(member)
+    db.commit()
+    db.refresh(team)
 
 
 class CancelTeamHandler(JoinTeamHandler):

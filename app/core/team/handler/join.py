@@ -11,6 +11,21 @@ from .base import BaseHandler
 logger = get_logger(__name__)
 
 
+def get_team_list(db: Session):
+    teams = db.exec(
+        select(Team)
+        .where(Team.created_at > (datetime.now() - timedelta(days=1)))
+        .order_by(Team.created_at.desc())
+    ).all()
+    if not teams:
+        raise TeamError(
+            "Team is not found.",
+            "팀을 찾을 수 없어요.",
+            "**/q**로 팀을 새로 생성해 보세요.",
+        )
+    return teams
+
+
 async def add_member(db: Session, team: Team, user_id: int, user_name: str):
     member_ids = [member.discord_id for member in team.members]
 
