@@ -1,22 +1,29 @@
-aiohttp
+# Discord
 discord.py
-python-dotenv
-openai
-hiredis
+
+# DB
 redis
-tiktoken
-langgraph
-langgraph-checkpoint-sqlite
-langchain
-langchain-openai
-langchain-anthropic
-langchain-google-community
-wikipedia
-python-magic
-lxml
-redisvl 
-pypdf
-pydantic
-aiosqlite
-beautifulsoup4
+psycopg2-binary
 sqlmodel
+
+# Environment
+python-dotenv
+
+# aiohttp
+# openai
+# hiredis
+# tiktoken
+# langgraph
+# langgraph-checkpoint-sqlite
+# langchain
+# langchain-openai
+# langchain-anthropic
+# langchain-google-community
+# wikipedia
+# python-magic
+# lxml
+# redisvl
+# pypdf
+# pydantic
+# aiosqlite
+# beautifulsoup4

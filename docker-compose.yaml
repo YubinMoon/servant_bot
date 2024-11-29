@@ -4,7 +4,9 @@ services:
         restart: always
         depends_on:
             - redis
-
+            - postgres
+        environment:
+            DATABASE_TYPE: postgresql
         volumes:
             - ./database/sqlite:/app/database/sqlite
 
@@ -17,3 +19,15 @@ services:
         volumes:
             - "./database/redis:/data"
             - "./database/redis/redis.conf:/redis-stack.conf"
+
+    postgres:
+        image: postgres:latest
+        restart: always
+        environment:
+            POSTGRES_USER: ${POSTGRES_USER}
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+            POSTGRES_DB: ${POSTGRES_DB}
+        ports:
+            - "5432:5432"
+        volumes:
+            - ./database/postgres:/var/lib/postgresql/data

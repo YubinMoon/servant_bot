@@ -13,4 +13,4 @@ COPY .env /bot/.env
 
 COPY ./app /bot/app
 
-CMD ["python", "main.py"]
+CMD ["python", "-m", "app.main"]
