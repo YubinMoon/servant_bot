@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
+from sqlalchemy import BigInteger, Column
 from sqlmodel import Field, Relationship, SQLModel
 
 UTC_9 = timezone(timedelta(hours=9))
@@ -8,9 +9,9 @@ UTC_9 = timezone(timedelta(hours=9))
 class Target(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     name: str
-    discord_id: int
-    guild_id: int
-    channel_id: int
+    discord_id: int = Field(sa_column=Column(BigInteger()))
+    guild_id: int = Field(sa_column=Column(BigInteger()))
+    channel_id: int = Field(sa_column=Column(BigInteger()))
 
     states: list["TargetState"] = Relationship(
         back_populates="target", cascade_delete=True

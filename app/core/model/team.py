@@ -1,7 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column
-from sqlalchemy.types import BigInteger
+from sqlalchemy import BigInteger, Column
 from sqlmodel import Field, Relationship, SQLModel
 
 
