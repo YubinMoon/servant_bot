@@ -5,8 +5,6 @@ from typing import Generator
 from dotenv import load_dotenv
 from sqlmodel import Session, SQLModel, create_engine
 
-from .base import get_async_redis, get_sync_redis
-
 load_dotenv(override=True)
 
 database_type = os.getenv("DATABASE_TYPE", "sqlite")

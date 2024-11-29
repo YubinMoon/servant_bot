@@ -11,7 +11,7 @@ from discord.ext.commands import Context
 from .cogs import cog_list
 from .common.config import config
 from .common.logger import get_logger
-from .core.database import create_db_and_tables, get_async_redis
+from .core.database import create_db_and_tables
 
 
 class ServantBot(commands.Bot):
@@ -28,14 +28,6 @@ class ServantBot(commands.Bot):
             create_db_and_tables()
         except:
             self.logger.error("Failed to create the database and tables")
-            self.logger.debug(traceback.format_exc())
-            sys.exit(1)
-        try:
-            async with get_async_redis() as db:
-                await db.ping()
-            self.logger.info("Connected to the Redis server")
-        except:
-            self.logger.error("Failed to connect to the Redis server")
             self.logger.debug(traceback.format_exc())
             sys.exit(1)
 

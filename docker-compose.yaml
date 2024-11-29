@@ -3,22 +3,11 @@ services:
         build: .
         restart: always
         depends_on:
-            - redis
             - postgres
         environment:
             DATABASE_TYPE: postgresql
         volumes:
-            - ./database/sqlite:/app/database/sqlite
-
-    redis:
-        image: redis/redis-stack:latest
-        restart: always
-        ports:
-            - "${REDIS_PORT}:6379"
-            - "${REDIS_WEB_PORT}:8001"
-        volumes:
-            - "./database/redis:/data"
-            - "./database/redis/redis.conf:/redis-stack.conf"
+            - ./status.txt:/bot/status.txt:ro
 
     postgres:
         image: postgres:latest
@@ -30,4 +19,7 @@ services:
         ports:
             - "5432:5432"
         volumes:
-            - ./database/postgres:/var/lib/postgresql/data
+            - postgres_data:/var/lib/postgresql/data
+
+volumes:
+    postgres_data:

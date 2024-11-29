@@ -1,12 +1,14 @@
 from datetime import datetime
 
+from sqlalchemy import Column
+from sqlalchemy.types import BigInteger
 from sqlmodel import Field, Relationship, SQLModel
 
 
 class Team(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     name: str
-    message_id: int
+    message_id: int = Field(sa_column=Column(BigInteger()))
     members: list["Member"] = Relationship(back_populates="team", cascade_delete=True)
     histories: list["TeamHistory"] = Relationship(
         back_populates="team", cascade_delete=True
@@ -17,7 +19,7 @@ class Team(SQLModel, table=True):
 
 class Member(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    discord_id: int
+    discord_id: int = Field(sa_column=Column(BigInteger()))
     name: str
 
     team_id: int = Field(foreign_key="team.id")
