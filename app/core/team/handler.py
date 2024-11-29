@@ -1,7 +1,6 @@
 import json
 import random
 from datetime import datetime, timedelta
-from re import I
 
 from sqlmodel import Session, select
 

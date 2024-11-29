@@ -2,7 +2,6 @@ from typing import TYPE_CHECKING
 
 from discord import app_commands
 from discord.ext import commands
-from regex import F
 
 from ..common.logger import get_logger
 from ..core.database import get_session
@@ -18,8 +17,9 @@ from ..core.team.view import (
 )
 
 if TYPE_CHECKING:
-    from bot import ServantBot
     from discord.ext.commands import Context
+
+    from ..bot import ServantBot
 
 logger = get_logger(__name__)
 
@@ -29,7 +29,7 @@ class Team(commands.Cog, name="team"):
         self.bot = bot
 
     @commands.guild_only()
-    @commands.hybrid_group(name="team", fallback="get")
+    @commands.hybrid_group(name="team")
     async def team(self, context: "Context") -> None:
         pass
 
