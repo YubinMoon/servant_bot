@@ -9,7 +9,6 @@ from discord.ext import commands, tasks
 from discord.ext.commands import Context
 
 from .cogs import cog_list
-from .common.config import config
 from .common.logger import get_logger
 from .core.database import create_db_and_tables
 
@@ -17,7 +16,7 @@ from .core.database import create_db_and_tables
 class ServantBot(commands.Bot):
     def __init__(self, intents: discord.Intents) -> None:
         super().__init__(
-            command_prefix=commands.when_mentioned_or(config["prefix"]),
+            command_prefix=commands.when_mentioned_or(os.getenv("BOT_PREFIX", "!")),
             intents=intents,
             help_command=None,
         )
