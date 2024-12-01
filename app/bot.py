@@ -12,6 +12,8 @@ from .cogs import cog_list
 from .common.logger import get_logger
 from .core.database import create_db_and_tables
 
+logger = get_logger(__name__)
+
 
 class ServantBot(commands.Bot):
     def __init__(self, intents: discord.Intents) -> None:
@@ -20,27 +22,24 @@ class ServantBot(commands.Bot):
             intents=intents,
             help_command=None,
         )
-        self.logger = get_logger("servant_bot")
 
     async def load_db(self) -> None:
         try:
             create_db_and_tables()
         except:
-            self.logger.error("Failed to create the database and tables")
-            self.logger.debug(traceback.format_exc())
+            logger.error("Failed to create the database and tables")
+            logger.debug(traceback.format_exc())
             sys.exit(1)
 
     async def load_cogs(self) -> None:
         for cog in cog_list:
             try:
                 await self.add_cog(cog(self))
-                self.logger.info(f"Loaded extension '{cog.__name__}'")
+                logger.info(f"Loaded extension '{cog.__name__}'")
             except Exception as e:
                 exception = f"{type(e).__name__}: {e}"
-                self.logger.error(
-                    f"Failed to load extension {cog.__name__}\n{exception}"
-                )
-                self.logger.debug(traceback.format_exc())
+                logger.error(f"Failed to load extension {cog.__name__}\n{exception}")
+                logger.debug(traceback.format_exc())
 
     @tasks.loop(minutes=1.0)
     async def status_task(self) -> None:
@@ -55,7 +54,7 @@ class ServantBot(commands.Bot):
             with open("status.txt", "r") as f:
                 return f.read().split("\n")
         except FileNotFoundError:
-            self.logger.warning("Status file not found, using default status")
+            logger.warning("Status file not found, using default status")
             return ["limeskin"]
 
     @status_task.before_loop
@@ -73,21 +72,19 @@ class ServantBot(commands.Bot):
             bot_user_name = "Unknown"
         else:
             bot_user_name = self.user.name
-        self.logger.info(f"Logged in as {bot_user_name}")
-        self.logger.info(f"discord.py API version: {discord.__version__}")
-        self.logger.info(f"Python version: {platform.python_version()}")
-        self.logger.info(
-            f"Running on: {platform.system()} {platform.release()} ({os.name})"
-        )
-        self.logger.info("-------------------")
+        logger.info(f"Logged in as {bot_user_name}")
+        logger.info(f"discord.py API version: {discord.__version__}")
+        logger.info(f"Python version: {platform.python_version()}")
+        logger.info(f"Running on: {platform.system()} {platform.release()} ({os.name})")
+        logger.info("-------------------")
         await self.load_cogs()
         await self.load_db()
         self.status_task.start()
 
     async def on_ready(self) -> None:
-        self.logger.info("Sync starting...")
+        logger.info("Sync starting...")
         await self.tree.sync()
-        self.logger.info("Sync complete")
+        logger.info("Sync complete")
 
     async def on_message(self, message: discord.Message) -> None:
         """
@@ -111,11 +108,11 @@ class ServantBot(commands.Bot):
         split = full_command_name.split(" ")
         executed_command = str(split[0])
         if context.guild is not None:
-            self.logger.info(
+            logger.info(
                 f"Executed {executed_command} command in {context.guild.name} (ID: {context.guild.id}) by {context.author} (ID: {context.author.id})"
             )
         else:
-            self.logger.info(
+            logger.info(
                 f"Executed {executed_command} command by {context.author} (ID: {context.author.id}) in DMs"
             )
 
@@ -141,11 +138,11 @@ class ServantBot(commands.Bot):
             )
             await context.send(embed=embed, ephemeral=True)
             if context.guild:
-                self.logger.warning(
+                logger.warning(
                     f"{context.author} (ID: {context.author.id}) tried to execute an owner only command in the guild {context.guild.name} (ID: {context.guild.id}), but the user is not an owner of the bot."
                 )
             else:
-                self.logger.warning(
+                logger.warning(
                     f"{context.author} (ID: {context.author.id}) tried to execute an owner only command in the bot's DMs, but the user is not an owner of the bot."
                 )
         elif isinstance(error, commands.MissingPermissions):
@@ -173,6 +170,6 @@ class ServantBot(commands.Bot):
             )
             await context.send(embed=embed, ephemeral=True)
         elif isinstance(error, commands.errors.CommandNotFound):
-            self.logger.warning(
+            logger.warning(
                 f"{context.author} (ID: {context.author.id}) tried to execute the invalid command '{context.invoked_with}'"
             )
