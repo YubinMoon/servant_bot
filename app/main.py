@@ -3,9 +3,9 @@ import os
 import discord
 from dotenv import load_dotenv
 
-from .bot import ServantBot
-
 load_dotenv(override=True)
+
+from .bot import ServantBot
 
 """	
 Setup bot intents (events restrictions)
