@@ -38,13 +38,14 @@ class Team(commands.Cog, name="team"):
         name="q", description="새로운 팀 생성", aliases=["ㅋ", "큐"]
     )
     @app_commands.describe(name="팀 이름")
-    async def alias_start(self, context: "Context", name: str) -> None:
-        await self.start(context, name)
+    async def alias_start(self, context: "Context", *, name: str) -> None:
+        logger.info(name)
+        await self.start(context, name=name)
 
     @commands.guild_only()
     @team.command(name="start", description="새로운 팀 생성")
     @app_commands.describe(name="팀 이름")
-    async def start(self, context: "Context", name: str) -> None:
+    async def start(self, context: "Context", *, name: str) -> None:
         with get_session() as session:
             message_id = await controller.setup_embed(context, name)
             team = await handler.create_team(session, message_id, name)

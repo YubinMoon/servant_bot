@@ -2,10 +2,7 @@ import os
 from contextlib import contextmanager
 from typing import Generator
 
-from dotenv import load_dotenv
 from sqlmodel import Session, SQLModel, create_engine
-
-load_dotenv(override=True)
 
 database_type = os.getenv("DATABASE_TYPE", "sqlite")
 
