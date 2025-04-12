@@ -9,8 +9,6 @@ COPY ./requirements.txt /bot/requirements.txt
 
 RUN pip install -r requirements.txt
 
-COPY .env /bot/.env
-
 COPY ./app /bot/app
 
 CMD ["python", "-m", "app.main"]
