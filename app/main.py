@@ -3,6 +3,9 @@ import os
 import discord
 from dotenv import load_dotenv
 
+from app.common.logger import configure_logging
+
+configure_logging()
 load_dotenv(override=True)
 
 from .bot import ServantBot
