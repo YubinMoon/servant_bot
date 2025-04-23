@@ -36,9 +36,11 @@ class MessageData:
             }
 
 
-async def setup_new_chat(context: "Context") -> "Thread":
-    message = await context.send("새로운 채팅이 시작되었어요.")
-    thread = await message.create_thread(name="Agent Thread")
+async def setup_new_chat(
+    context: "Context", title: str, message_content: str
+) -> "Thread":
+    message = await context.send(message_content)
+    thread = await message.create_thread(name=title)
     return thread
 
 

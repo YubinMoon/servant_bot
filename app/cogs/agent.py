@@ -1,4 +1,5 @@
 import logging
+import traceback
 from typing import TYPE_CHECKING
 
 from discord import ChannelType, app_commands
@@ -26,7 +27,12 @@ class Agent(commands.Cog, name="agent"):
     @agent.command(name="new", description="새로운 채팅 시작")
     @app_commands.describe(goal="채팅 설명")
     async def new(self, context: "Context", *, goal: str = "") -> None:
-        await controller.setup_new_chat(context)
+        result = await handler.gen_thread_info(
+            thread_id=context.channel.id,
+            user_id=context.author.id,
+            message=goal,
+        )
+        await controller.setup_new_chat(context, result.title, result.nofication)
         logger.info(f"created new chat: {context.author.name}")
 
     @commands.Cog.listener()
@@ -49,3 +55,8 @@ class Agent(commands.Cog, name="agent"):
         )
         logger.debug(f"result: {result}")
         await controller.send_message(thread=channel, content=result)
+
+    @commands.Cog.listener()
+    async def on_command_error(self, context: "Context", error) -> None:
+        if isinstance(error, commands.errors.CommandError):
+            logger.error(f"{context.author} (ID: {context.author.id}) raised {error}")
