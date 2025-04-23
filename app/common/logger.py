@@ -61,3 +61,19 @@ def get_logger(name: str) -> logging.Logger:
     logger.addHandler(console_handler)
     logger.addHandler(file_handler)
     return logger
+
+
+def configure_logging():
+    root = logging.getLogger()
+    if root.handlers:
+        return  # 이미 설정되어 있으면 재설정하지 않음
+
+    # 로깅 레벨 결정 (env LOG_LEVEL: "debug" or "info")
+    level_str = os.getenv("LOG_LEVEL", "info").lower()
+    level = {"debug": logging.DEBUG, "info": logging.INFO}.get(level_str, logging.INFO)
+    root.setLevel(level)
+
+    # 콘솔 핸들러
+    console_h = logging.StreamHandler()
+    console_h.setFormatter(LoggingFormatter())
+    root.addHandler(console_h)
