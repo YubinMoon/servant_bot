@@ -13,7 +13,7 @@ class BotContext(BaseModel):
     user_id: int
 
 
-test_agent = Agent[BotContext](
+gemini_agent = Agent[BotContext](
     name="Test Agent",
     model="litellm/gemini/gemini-2.0-flash",
     instructions="You are a test agent. Answer the question.",
