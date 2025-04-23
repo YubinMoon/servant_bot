@@ -8,3 +8,13 @@ sqlmodel
 
 # Environment
 python-dotenv
+
+# agent
+openai-agents
+openai-agents[litellm]
+
+# test
+pytest
+
+# etc
+requests
