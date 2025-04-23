@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING
 
 import requests
 
+from app.common.utils.text_splitter import split_into_chunks
+
 if TYPE_CHECKING:
     from discord import Attachment, Message, Thread
     from discord.ext.commands import Context
@@ -77,6 +79,12 @@ async def parse_message(message: "Message"):
     if message.content:
         messages.append(MessageData(type=MessageType.TEXT, content=message.content))
     return messages
+
+
+async def send_message(thread: "Thread", content: str):
+    chunks = split_into_chunks(content)
+    for chunk in chunks:
+        await thread.send(chunk)
 
 
 if __name__ == "__main__":

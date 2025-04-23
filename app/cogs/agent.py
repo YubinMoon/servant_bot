@@ -48,7 +48,4 @@ class Agent(commands.Cog, name="agent"):
             messages=messages,
         )
         logger.debug(f"result: {result}")
-        await message.reply(
-            content=result,
-            mention_author=False,
-        )
+        await controller.send_message(thread=channel, content=result)
