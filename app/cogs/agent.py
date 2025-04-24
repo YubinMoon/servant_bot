@@ -1,11 +1,11 @@
 import logging
-import traceback
 from typing import TYPE_CHECKING
 
 from discord import ChannelType, app_commands
 from discord.ext import commands
 
-from app.core.agent import controller, handler
+from app.common.utils.text_splitter import split_into_chunks
+from app.core.agent import Messenger, controller, handler
 
 if TYPE_CHECKING:
     from discord import Message
@@ -45,16 +45,21 @@ class Agent(commands.Cog, name="agent"):
         ):
             return
         logger.debug(f"message from {message.author.name}: {message.content}")
-        thread_id = channel.id
-        user_id = message.author.id
+        messenger = Messenger(
+            thread=channel,
+            splitter=split_into_chunks,
+        )
+        messenger.set_content("생각 중...")
+        await messenger.update_message()
         messages = await controller.parse_message(message)
         result = await handler.call_agent(
-            thread_id=thread_id,
-            user_id=user_id,
+            thread_id=channel.id,
+            user_id=message.author.id,
             messages=messages,
         )
         logger.debug(f"result: {result}")
-        await controller.send_message(thread=channel, content=result)
+        messenger.set_content(result)
+        await messenger.update_message()
 
     @commands.Cog.listener()
     async def on_command_error(self, context: "Context", error) -> None:

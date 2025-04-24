@@ -83,12 +83,6 @@ async def parse_message(message: "Message"):
     return messages
 
 
-async def send_message(thread: "Thread", content: str):
-    chunks = split_into_chunks(content)
-    for chunk in chunks:
-        await thread.send(chunk)
-
-
 if __name__ == "__main__":
     data = MessageData(
         type=MessageType.TEXT,
