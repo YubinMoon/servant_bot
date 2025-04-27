@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 from agents import Runner, TResponseInputItem
 from pydantic import BaseModel
 
-from app.common.agent import BotContext, gemini_agent
+from app.core.agent.agents import BotContext, gemini_agent
 
 if TYPE_CHECKING:
     from .controller import MessageData
