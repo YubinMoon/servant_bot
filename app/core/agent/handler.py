@@ -1,7 +1,7 @@
 import logging
 from typing import TYPE_CHECKING
 
-from agents import Runner
+from agents import Runner, TResponseInputItem
 from pydantic import BaseModel
 
 from app.common.agent import BotContext, gemini_agent
@@ -10,6 +10,8 @@ if TYPE_CHECKING:
     from .controller import MessageData
 
 logger = logging.getLogger(__name__)
+
+message_db: dict[int, list[TResponseInputItem]] = {}
 
 
 class ThreadInfo(BaseModel):
@@ -44,18 +46,20 @@ async def gen_thread_info(thread_id: int, user_id: int, message: str) -> ThreadI
 def call_agent(
     thread_id: int,
     user_id: int,
-    messages: "list[MessageData]",
+    messages: "list[TResponseInputItem]",
 ):
     context = BotContext(thread_id=thread_id, user_id=user_id)
-    contents = [message.to_content() for message in messages]
     result = Runner.run_streamed(
         gemini_agent,
-        [
-            {
-                "role": "user",
-                "content": contents,
-            }
-        ],
+        messages,
         context=context,
     )
     return result
+
+
+def get_message(thread_id: int) -> list[TResponseInputItem]:
+    return message_db.get(thread_id, [])[-12:]
+
+
+def save_message(thread_id: int, messages: list[TResponseInputItem]) -> None:
+    message_db[thread_id] = messages

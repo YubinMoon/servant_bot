@@ -53,10 +53,17 @@ class Agent(commands.Cog, name="agent"):
         messenger.add_content("생각 중...")
         await messenger.update_message()
         messages = await controller.parse_message(message)
+        contents = [message.to_content() for message in messages]
+        pre_messages = handler.get_message(channel.id) + [
+            {
+                "role": "user",
+                "content": contents,
+            }
+        ]
         result = handler.call_agent(
             thread_id=channel.id,
             user_id=message.author.id,
-            messages=messages,
+            messages=pre_messages,
         )
         messenger.del_content()
         async for event in result.stream_events():
@@ -70,6 +77,7 @@ class Agent(commands.Cog, name="agent"):
                 elif event.item.type == "tool_call_item":
                     messenger.add_content(event.item.raw_item.name, "tool")
                 await messenger.update_message()
+        handler.save_message(channel.id, result.to_input_list())
 
     @commands.Cog.listener()
     async def on_command_error(self, context: "Context", error) -> None:
