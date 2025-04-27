@@ -1,7 +1,17 @@
-from typing import TYPE_CHECKING, Callable, List
+import logging
+from typing import TYPE_CHECKING, Callable, List, Literal
+
+from pydantic import BaseModel
 
 if TYPE_CHECKING:
     from discord import Message, Thread
+
+logger = logging.getLogger(__name__)
+
+
+class MessagePart(BaseModel):
+    content: str
+    type: Literal["text", "image", "tool"]
 
 
 class Messenger:
@@ -9,19 +19,41 @@ class Messenger:
         self.thread = thread
         self.splitter = splitter
         self.messages: "List[Message]" = []
-        self._contents: List[str] = []
+        self._sended_contents: List[str] = []
         self._pending_parts: List[str] = []
+        self._contents: List[MessagePart] = []
 
-    def set_content(self, content: str):
-        self._pending_parts = self.splitter(content)
+    def _message_builder(self) -> str:
+        result = ""
+        for part in self._contents:
+            if part.type == "text":
+                result += f"{part.content}\n\n"
+            elif part.type == "image":
+                logger.warning("image part is not supported")
+            elif part.type == "tool":
+                result += f"{part.content}\n\n"
+        return result.strip()
+
+    def add_content(
+        self, content: str, type: Literal["text", "image", "tool"] = "text"
+    ):
+        self._contents.append(MessagePart(content=content, type=type))
+
+    def del_content(self):
+        if self._contents:
+            self._contents.pop()
 
     async def update_message(self):
-        for i, part in enumerate(self._pending_parts):
+        content = self._message_builder()
+        if not content:
+            return
+        pending_parts = self.splitter(content)
+        for i, part in enumerate(pending_parts):
             if i < len(self.messages):
-                if self._contents[i] != part:
+                if self._sended_contents[i] != part:
                     await self.messages[i].edit(content=part)
-                    self._contents[i] = part
+                    self._sended_contents[i] = part
             else:
                 msg = await self.thread.send(content=part)
                 self.messages.append(msg)
-                self._contents.append(part)
+                self._sended_contents.append(part)

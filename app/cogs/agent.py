@@ -1,6 +1,7 @@
 import logging
 from typing import TYPE_CHECKING
 
+from agents import ItemHelpers
 from discord import ChannelType, app_commands
 from discord.ext import commands
 
@@ -49,17 +50,26 @@ class Agent(commands.Cog, name="agent"):
             thread=channel,
             splitter=split_into_chunks,
         )
-        messenger.set_content("생각 중...")
+        messenger.add_content("생각 중...")
         await messenger.update_message()
         messages = await controller.parse_message(message)
-        result = await handler.call_agent(
+        result = handler.call_agent(
             thread_id=channel.id,
             user_id=message.author.id,
             messages=messages,
         )
-        logger.debug(f"result: {result}")
-        messenger.set_content(result)
-        await messenger.update_message()
+        messenger.del_content()
+        async for event in result.stream_events():
+            if event.type == "raw_response_event":
+                continue
+            elif event.type == "agent_updated_stream_event":
+                continue
+            elif event.type == "run_item_stream_event":
+                if event.item.type == "message_output_item":
+                    messenger.add_content(ItemHelpers.text_message_output(event.item))
+                elif event.item.type == "tool_call_item":
+                    messenger.add_content(event.item.raw_item.name, "tool")
+                await messenger.update_message()
 
     @commands.Cog.listener()
     async def on_command_error(self, context: "Context", error) -> None:

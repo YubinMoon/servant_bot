@@ -41,14 +41,14 @@ async def gen_thread_info(thread_id: int, user_id: int, message: str) -> ThreadI
     return result.final_output
 
 
-async def call_agent(
+def call_agent(
     thread_id: int,
     user_id: int,
     messages: "list[MessageData]",
 ):
     context = BotContext(thread_id=thread_id, user_id=user_id)
     contents = [message.to_content() for message in messages]
-    result = await Runner.run(
+    result = Runner.run_streamed(
         gemini_agent,
         [
             {
@@ -58,4 +58,4 @@ async def call_agent(
         ],
         context=context,
     )
-    return result.final_output
+    return result
