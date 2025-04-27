@@ -1,11 +1,12 @@
 import logging
-import traceback
 from typing import TYPE_CHECKING
 
+from agents import ItemHelpers
 from discord import ChannelType, app_commands
 from discord.ext import commands
 
-from app.core.agent import controller, handler
+from app.common.utils.text_splitter import split_into_chunks
+from app.core.agent import Messenger, controller, handler
 
 if TYPE_CHECKING:
     from discord import Message
@@ -45,16 +46,38 @@ class Agent(commands.Cog, name="agent"):
         ):
             return
         logger.debug(f"message from {message.author.name}: {message.content}")
-        thread_id = channel.id
-        user_id = message.author.id
-        messages = await controller.parse_message(message)
-        result = await handler.call_agent(
-            thread_id=thread_id,
-            user_id=user_id,
-            messages=messages,
+        messenger = Messenger(
+            thread=channel,
+            splitter=split_into_chunks,
         )
-        logger.debug(f"result: {result}")
-        await controller.send_message(thread=channel, content=result)
+        messenger.add_content("생각 중...")
+        await messenger.update_message()
+        messages = await controller.parse_message(message)
+        contents = [message.to_content() for message in messages]
+        pre_messages = handler.get_message(channel.id) + [
+            {
+                "role": "user",
+                "content": contents,
+            }
+        ]
+        result = handler.call_agent(
+            thread_id=channel.id,
+            user_id=message.author.id,
+            messages=pre_messages,
+        )
+        messenger.del_content()
+        async for event in result.stream_events():
+            if event.type == "raw_response_event":
+                continue
+            elif event.type == "agent_updated_stream_event":
+                continue
+            elif event.type == "run_item_stream_event":
+                if event.item.type == "message_output_item":
+                    messenger.add_content(ItemHelpers.text_message_output(event.item))
+                elif event.item.type == "tool_call_item":
+                    messenger.add_content(event.item.raw_item.name, "tool")
+                await messenger.update_message()
+        handler.save_message(channel.id, result.to_input_list())
 
     @commands.Cog.listener()
     async def on_command_error(self, context: "Context", error) -> None:
