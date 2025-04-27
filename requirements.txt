@@ -10,8 +10,8 @@ sqlmodel
 python-dotenv
 
 # agent
-openai-agents
-openai-agents[litellm]
+openai-agents==0.0.13
+litellm==1.67.2
 
 # test
 pytest
