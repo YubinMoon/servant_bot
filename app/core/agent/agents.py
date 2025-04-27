@@ -1,10 +1,8 @@
 import logging
 from datetime import datetime
 
-from agents import Agent, ModelSettings, RunContextWrapper
+from agents import Agent, RunContextWrapper
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
-from agents.extensions.models.litellm_model import LitellmModel
-from litellm import Reasoning
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
